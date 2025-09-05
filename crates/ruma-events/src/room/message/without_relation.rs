@@ -27,6 +27,10 @@ pub struct RoomMessageEventContentWithoutRelation {
     #[serde(rename = "m.mentions", skip_serializing_if = "Option::is_none")]
     pub mentions: Option<Mentions>,
 
+    /// The TSP `sign_anycast` signature for this message.
+    #[serde(rename = "org.robius.tsp_signature", skip_serializing_if = "Option::is_none")]
+    pub tsp_signature: Option<Vec<u8>>,
+
     /// See [`RoomMessageEventContent::stream`].
     ///
     /// [`RoomMessageEventContent::stream`]: super::RoomMessageEventContent::stream
@@ -41,6 +45,7 @@ impl RoomMessageEventContentWithoutRelation {
         Self {
             msgtype,
             mentions: None,
+            tsp_signature: None,
             #[cfg(feature = "unstable-msc4471")]
             stream: None,
         }
@@ -102,6 +107,7 @@ impl RoomMessageEventContentWithoutRelation {
         let Self {
             msgtype,
             mentions,
+            tsp_signature,
             #[cfg(feature = "unstable-msc4471")]
             stream,
         } = self;
@@ -109,6 +115,7 @@ impl RoomMessageEventContentWithoutRelation {
             msgtype,
             relates_to,
             mentions,
+            tsp_signature,
             #[cfg(feature = "unstable-msc4471")]
             stream,
         }
@@ -251,6 +258,8 @@ impl RoomMessageEventContentWithoutRelation {
             new_content: RoomMessageEventContentWithoutRelation {
                 msgtype: self.msgtype.clone(),
                 mentions,
+                // This replacement message must be re-signed manually
+                tsp_signature: None,
                 #[cfg(feature = "unstable-msc4471")]
                 stream: self.stream.clone(),
             },
@@ -288,6 +297,7 @@ impl From<RoomMessageEventContent> for RoomMessageEventContentWithoutRelation {
         let RoomMessageEventContent {
             msgtype,
             mentions,
+            tsp_signature,
             #[cfg(feature = "unstable-msc4471")]
             stream,
             ..
@@ -295,6 +305,7 @@ impl From<RoomMessageEventContent> for RoomMessageEventContentWithoutRelation {
         Self {
             msgtype,
             mentions,
+            tsp_signature,
             #[cfg(feature = "unstable-msc4471")]
             stream,
         }
@@ -306,6 +317,7 @@ impl From<RoomMessageEventContentWithoutRelation> for RoomMessageEventContent {
         let RoomMessageEventContentWithoutRelation {
             msgtype,
             mentions,
+            tsp_signature,
             #[cfg(feature = "unstable-msc4471")]
             stream,
         } = value;
@@ -313,6 +325,7 @@ impl From<RoomMessageEventContentWithoutRelation> for RoomMessageEventContent {
             msgtype,
             relates_to: None,
             mentions,
+            tsp_signature,
             #[cfg(feature = "unstable-msc4471")]
             stream,
         }

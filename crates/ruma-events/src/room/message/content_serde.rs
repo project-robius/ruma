@@ -31,10 +31,13 @@ impl<'de> Deserialize<'de> for RoomMessageEventContent {
             stream,
         } = from_raw_json_value(&json)?;
 
+        let TspSignatureDeHelper { tsp_signature } = from_raw_json_value(&json)?;
+
         Ok(Self {
             msgtype: from_raw_json_value(&json)?,
             relates_to,
             mentions,
+            tsp_signature,
             #[cfg(feature = "unstable-msc4471")]
             stream,
         })
@@ -54,13 +57,22 @@ impl<'de> Deserialize<'de> for RoomMessageEventContentWithoutRelation {
             stream,
         } = from_raw_json_value(&json)?;
 
+        let TspSignatureDeHelper { tsp_signature } = from_raw_json_value(&json)?;
+
         Ok(Self {
             msgtype: from_raw_json_value(&json)?,
             mentions,
+            tsp_signature,
             #[cfg(feature = "unstable-msc4471")]
             stream,
         })
     }
+}
+
+#[derive(Deserialize)]
+struct TspSignatureDeHelper {
+    #[serde(rename = "org.robius.tsp_signature")]
+    tsp_signature: Option<Vec<u8>>,
 }
 
 #[derive(Deserialize)]

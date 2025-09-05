@@ -100,6 +100,10 @@ pub struct RoomMessageEventContent {
     #[serde(rename = "m.mentions", skip_serializing_if = "Option::is_none")]
     pub mentions: Option<Mentions>,
 
+    /// The TSP `sign_anycast` signature for this message.
+    #[serde(rename = "org.robius.tsp_signature", skip_serializing_if = "Option::is_none")]
+    pub tsp_signature: Option<Vec<u8>>,
+
     /// A descriptor advertising a live event stream for this message.
     ///
     /// This uses the unstable prefix defined in [MSC4471].
@@ -117,6 +121,7 @@ impl RoomMessageEventContent {
             msgtype,
             relates_to: None,
             mentions: None,
+            tsp_signature: None,
             #[cfg(feature = "unstable-msc4471")]
             stream: None,
         }
@@ -269,11 +274,13 @@ impl RoomMessageEventContent {
         let RoomMessageEventContentWithoutRelation {
             msgtype,
             mentions,
+            tsp_signature,
             #[cfg(feature = "unstable-msc4471")]
             stream,
         } = new_content;
         self.msgtype = msgtype;
         self.mentions = mentions;
+        self.tsp_signature = tsp_signature;
         #[cfg(feature = "unstable-msc4471")]
         {
             self.stream = stream;
