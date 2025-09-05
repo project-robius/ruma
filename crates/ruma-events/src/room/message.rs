@@ -99,12 +99,16 @@ pub struct RoomMessageEventContent {
     /// [mentions]: https://spec.matrix.org/latest/client-server-api/#user-and-room-mentions
     #[serde(rename = "m.mentions", skip_serializing_if = "Option::is_none")]
     pub mentions: Option<Mentions>,
+
+    /// The TSP `sign_anycast` signature for this message.
+    #[serde(rename = "org.robius.tsp_signature", skip_serializing_if = "Option::is_none")]
+    pub tsp_signature: Option<Vec<u8>>,
 }
 
 impl RoomMessageEventContent {
     /// Create a `RoomMessageEventContent` with the given `MessageType`.
     pub fn new(msgtype: MessageType) -> Self {
-        Self { msgtype, relates_to: None, mentions: None }
+        Self { msgtype, relates_to: None, mentions: None, tsp_signature: None }
     }
 
     /// A constructor to create a plain text message.
@@ -340,9 +344,10 @@ impl RoomMessageEventContent {
 
     /// Apply the given new content from a [`Replacement`] to this message.
     pub fn apply_replacement(&mut self, new_content: RoomMessageEventContentWithoutRelation) {
-        let RoomMessageEventContentWithoutRelation { msgtype, mentions } = new_content;
+        let RoomMessageEventContentWithoutRelation { msgtype, mentions, tsp_signature } = new_content;
         self.msgtype = msgtype;
         self.mentions = mentions;
+        self.tsp_signature = tsp_signature;
     }
 
     /// Sanitize this message.

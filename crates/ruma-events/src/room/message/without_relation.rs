@@ -27,12 +27,16 @@ pub struct RoomMessageEventContentWithoutRelation {
     /// [mentions]: https://spec.matrix.org/latest/client-server-api/#user-and-room-mentions
     #[serde(rename = "m.mentions", skip_serializing_if = "Option::is_none")]
     pub mentions: Option<Mentions>,
+
+    /// The TSP `sign_anycast` signature for this message.
+    #[serde(rename = "org.robius.tsp_signature", skip_serializing_if = "Option::is_none")]
+    pub tsp_signature: Option<Vec<u8>>,
 }
 
 impl RoomMessageEventContentWithoutRelation {
     /// Creates a new `RoomMessageEventContentWithoutRelation` with the given `MessageType`.
     pub fn new(msgtype: MessageType) -> Self {
-        Self { msgtype, mentions: None }
+        Self { msgtype, mentions: None, tsp_signature: None }
     }
 
     /// A constructor to create a plain text message.
@@ -88,8 +92,8 @@ impl RoomMessageEventContentWithoutRelation {
         self,
         relates_to: Option<Relation<RoomMessageEventContentWithoutRelation>>,
     ) -> RoomMessageEventContent {
-        let Self { msgtype, mentions } = self;
-        RoomMessageEventContent { msgtype, relates_to, mentions }
+        let Self { msgtype, mentions, tsp_signature } = self;
+        RoomMessageEventContent { msgtype, relates_to, mentions, tsp_signature }
     }
 
     /// Turns `self` into a reply to the given message.
@@ -316,6 +320,8 @@ impl RoomMessageEventContentWithoutRelation {
             new_content: RoomMessageEventContentWithoutRelation {
                 msgtype: self.msgtype.clone(),
                 mentions,
+                // This replacement message must be re-signed manually
+                tsp_signature: None,
             },
         });
 
@@ -373,14 +379,14 @@ impl From<MessageType> for RoomMessageEventContentWithoutRelation {
 
 impl From<RoomMessageEventContent> for RoomMessageEventContentWithoutRelation {
     fn from(value: RoomMessageEventContent) -> Self {
-        let RoomMessageEventContent { msgtype, mentions, .. } = value;
-        Self { msgtype, mentions }
+        let RoomMessageEventContent { msgtype, mentions, tsp_signature, .. } = value;
+        Self { msgtype, mentions, tsp_signature}
     }
 }
 
 impl From<RoomMessageEventContentWithoutRelation> for RoomMessageEventContent {
     fn from(value: RoomMessageEventContentWithoutRelation) -> Self {
-        let RoomMessageEventContentWithoutRelation { msgtype, mentions } = value;
-        Self { msgtype, relates_to: None, mentions }
+        let RoomMessageEventContentWithoutRelation { msgtype, mentions, tsp_signature } = value;
+        Self { msgtype, relates_to: None, mentions, tsp_signature }
     }
 }

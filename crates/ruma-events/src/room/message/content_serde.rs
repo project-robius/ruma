@@ -28,7 +28,9 @@ impl<'de> Deserialize<'de> for RoomMessageEventContent {
 
         let MentionsDeHelper { mentions } = from_raw_json_value(&json)?;
 
-        Ok(Self { msgtype: from_raw_json_value(&json)?, relates_to, mentions })
+        let TspSignatureDeHelper { tsp_signature } = from_raw_json_value(&json)?;
+
+        Ok(Self { msgtype: from_raw_json_value(&json)?, relates_to, mentions, tsp_signature })
     }
 }
 
@@ -41,8 +43,16 @@ impl<'de> Deserialize<'de> for RoomMessageEventContentWithoutRelation {
 
         let MentionsDeHelper { mentions } = from_raw_json_value(&json)?;
 
-        Ok(Self { msgtype: from_raw_json_value(&json)?, mentions })
+        let TspSignatureDeHelper { tsp_signature } = from_raw_json_value(&json)?;
+
+        Ok(Self { msgtype: from_raw_json_value(&json)?, mentions, tsp_signature })
     }
+}
+
+#[derive(Deserialize)]
+struct TspSignatureDeHelper {
+    #[serde(rename = "org.robius.tsp_signature")]
+    tsp_signature: Option<Vec<u8>>,
 }
 
 #[derive(Deserialize)]
