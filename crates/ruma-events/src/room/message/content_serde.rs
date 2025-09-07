@@ -1,7 +1,7 @@
 //! `Deserialize` implementation for RoomMessageEventContent and MessageType.
 
 use as_variant::as_variant;
-use ruma_common::serde::{JsonObject, from_raw_json_value};
+use ruma_common::serde::{Base64, JsonObject, from_raw_json_value};
 use serde::{Deserialize, de};
 use serde_json::{Value as JsonValue, value::RawValue as RawJsonValue};
 
@@ -72,7 +72,7 @@ impl<'de> Deserialize<'de> for RoomMessageEventContentWithoutRelation {
 #[derive(Deserialize)]
 struct TspSignatureDeHelper {
     #[serde(rename = "org.robius.tsp_signature")]
-    tsp_signature: Option<Vec<u8>>,
+    tsp_signature: Option<Base64>,
 }
 
 #[derive(Deserialize)]
