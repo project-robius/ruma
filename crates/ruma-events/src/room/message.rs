@@ -5,7 +5,7 @@
 use std::borrow::Cow;
 
 use ruma_common::{
-    serde::{JsonObject, Raw, StringEnum},
+    serde::{Base64, JsonObject, Raw, StringEnum},
     OwnedEventId, RoomId,
 };
 #[cfg(feature = "html")]
@@ -101,8 +101,10 @@ pub struct RoomMessageEventContent {
     pub mentions: Option<Mentions>,
 
     /// The TSP `sign_anycast` signature for this message.
+    ///
+    /// This is a byte array `Vec<u8>` encoded into a String using base64.
     #[serde(rename = "org.robius.tsp_signature", skip_serializing_if = "Option::is_none")]
-    pub tsp_signature: Option<Vec<u8>>,
+    pub tsp_signature: Option<Base64>,
 }
 
 impl RoomMessageEventContent {
