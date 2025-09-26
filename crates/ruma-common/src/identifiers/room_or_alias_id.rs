@@ -2,7 +2,7 @@
 
 use std::hint::unreachable_unchecked;
 
-use ruma_macros::IdZst;
+use ruma_macros::IdDst;
 use tracing::warn;
 
 use super::{server_name::ServerName, OwnedRoomAliasId, OwnedRoomId, RoomAliasId, RoomId};
@@ -23,10 +23,14 @@ use super::{server_name::ServerName, OwnedRoomAliasId, OwnedRoomId, RoomAliasId,
 /// );
 /// ```
 ///
+/// It can be converted to a `RoomId` or a `RoomAliasId` using `::try_from()` / `.try_into()`.
+/// For example, `<&RoomId>::try_from(room_or_alias_id)` returns either `Ok(room_id)` or
+/// `Err(room_alias_id)`.
+///
 /// [room ID]: https://spec.matrix.org/latest/appendices/#room-ids
 /// [room alias ID]: https://spec.matrix.org/latest/appendices/#room-aliases
 #[repr(transparent)]
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdZst)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdDst)]
 #[ruma_id(validate = ruma_identifiers_validation::room_id_or_alias_id::validate)]
 pub struct RoomOrAliasId(str);
 

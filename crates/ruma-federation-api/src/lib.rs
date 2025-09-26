@@ -13,6 +13,7 @@ use std::fmt;
 mod serde;
 
 pub mod authenticated_media;
+pub mod authentication;
 pub mod authorization;
 pub mod backfill;
 pub mod device;
@@ -20,7 +21,6 @@ pub mod directory;
 pub mod discovery;
 pub mod event;
 pub mod keys;
-pub mod knock;
 pub mod membership;
 pub mod openid;
 pub mod query;

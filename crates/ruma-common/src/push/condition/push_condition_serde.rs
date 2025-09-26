@@ -4,7 +4,7 @@ use serde_json::value::RawValue as RawJsonValue;
 #[cfg(feature = "unstable-msc3931")]
 use super::RoomVersionFeature;
 use super::{PushCondition, RoomMemberCountIs, ScalarJsonValue};
-use crate::serde::from_raw_json_value;
+use crate::{power_levels::NotificationPowerLevelsKey, serde::from_raw_json_value};
 
 impl Serialize for PushCondition {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -38,6 +38,11 @@ impl<'de> Deserialize<'de> for PushCondition {
             }
             #[cfg(feature = "unstable-msc3931")]
             "org.matrix.msc3931.room_version_supports" => {
+                let helper: PushConditionSerDeHelper = from_raw_json_value(&json)?;
+                Ok(helper.into())
+            }
+            #[cfg(feature = "unstable-msc4306")]
+            "io.element.msc4306.thread_subscription" => {
                 let helper: PushConditionSerDeHelper = from_raw_json_value(&json)?;
                 Ok(helper.into())
             }
@@ -84,7 +89,7 @@ enum PushConditionSerDeHelper {
         ///
         /// Fields must be specified under the `notifications` property in the power level event's
         /// `content`.
-        key: String,
+        key: NotificationPowerLevelsKey,
     },
 
     /// Apply the rule only to rooms that support a given feature.
@@ -103,6 +108,17 @@ enum PushConditionSerDeHelper {
     EventPropertyContains {
         key: String,
         value: ScalarJsonValue,
+    },
+
+    /// Matches a thread event based on the user's thread subscription status, as defined by
+    /// [MSC4306].
+    ///
+    /// [MSC4306]: https://github.com/matrix-org/matrix-spec-proposals/pull/4306
+    #[cfg(feature = "unstable-msc4306")]
+    #[serde(rename = "io.element.msc4306.thread_subscription")]
+    ThreadSubscription {
+        /// Whether the user must be subscribed to the thread for the condition to match.
+        subscribed: bool,
     },
 }
 
@@ -127,6 +143,10 @@ impl From<PushConditionSerDeHelper> for PushCondition {
             PushConditionSerDeHelper::EventPropertyContains { key, value } => {
                 Self::EventPropertyContains { key, value }
             }
+            #[cfg(feature = "unstable-msc4306")]
+            PushConditionSerDeHelper::ThreadSubscription { subscribed } => {
+                Self::ThreadSubscription { subscribed }
+            }
         }
     }
 }
@@ -145,6 +165,10 @@ impl From<PushCondition> for PushConditionSerDeHelper {
             PushCondition::EventPropertyIs { key, value } => Self::EventPropertyIs { key, value },
             PushCondition::EventPropertyContains { key, value } => {
                 Self::EventPropertyContains { key, value }
+            }
+            #[cfg(feature = "unstable-msc4306")]
+            PushCondition::ThreadSubscription { subscribed } => {
+                Self::ThreadSubscription { subscribed }
             }
             PushCondition::_Custom(_) => unimplemented!(),
         }

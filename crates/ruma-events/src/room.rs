@@ -10,6 +10,7 @@ use ruma_common::{
     OwnedMxcUri,
 };
 use serde::{de, Deserialize, Serialize};
+use zeroize::Zeroize;
 
 pub mod aliases;
 pub mod avatar;
@@ -20,6 +21,8 @@ pub mod encryption;
 pub mod guest_access;
 pub mod history_visibility;
 pub mod join_rules;
+#[cfg(feature = "unstable-msc4334")]
+pub mod language;
 pub mod member;
 pub mod message;
 pub mod name;
@@ -223,7 +226,7 @@ impl From<EncryptedFileInit> for EncryptedFile {
 ///
 /// To create an instance of this type, first create a `JsonWebKeyInit` and convert it via
 /// `JsonWebKey::from` / `.into()`.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 #[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 pub struct JsonWebKey {
     /// Key type.
@@ -251,11 +254,27 @@ pub struct JsonWebKey {
     pub ext: bool,
 }
 
+impl std::fmt::Debug for JsonWebKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JsonWebKey")
+            .field("kty", &self.kty)
+            .field("key_ops", &self.key_ops)
+            .field("alg", &self.alg)
+            .field("ext", &self.ext)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Drop for JsonWebKey {
+    fn drop(&mut self) {
+        self.k.zeroize();
+    }
+}
+
 /// Initial set of fields of `JsonWebKey`.
 ///
 /// This struct will not be updated even if additional fields are added to `JsonWebKey` in a new
 /// (non-breaking) release of the Matrix specification.
-#[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct JsonWebKeyInit {
     /// Key type.
@@ -281,6 +300,17 @@ pub struct JsonWebKeyInit {
     /// Must be `true`. This is a
     /// [W3C extension](https://w3c.github.io/webcrypto/#iana-section-jwk).
     pub ext: bool,
+}
+
+impl std::fmt::Debug for JsonWebKeyInit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JsonWebKeyInit")
+            .field("kty", &self.kty)
+            .field("key_ops", &self.key_ops)
+            .field("alg", &self.alg)
+            .field("ext", &self.ext)
+            .finish_non_exhaustive()
+    }
 }
 
 impl From<JsonWebKeyInit> for JsonWebKey {

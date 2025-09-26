@@ -8,10 +8,11 @@
 use std::{fmt, marker::PhantomData};
 
 use serde::{
-    de::{self, SeqAccess, Visitor},
+    de::{self, DeserializeOwned, SeqAccess, Visitor},
     Deserialize, Deserializer,
 };
 use serde_json::{value::RawValue as RawJsonValue, Value as JsonValue};
+use tracing::debug;
 
 pub mod base64;
 mod buf;
@@ -29,7 +30,7 @@ pub use self::{
     buf::{json_to_buf, slice_to_buf},
     can_be_empty::{is_empty, CanBeEmpty},
     cow::deserialize_cow_str,
-    raw::Raw,
+    raw::{JsonCastable, Raw},
     strings::{
         btreemap_deserialize_v1_powerlevel_values, deserialize_as_number_or_string,
         deserialize_as_optional_number_or_string, deserialize_v1_powerlevel, empty_string_as_none,
@@ -76,6 +77,30 @@ where
     E: de::Error,
 {
     serde_json::from_str(val.get()).map_err(E::custom)
+}
+
+/// Helper function for returning a default value if deserialization of the type fails.
+///
+/// Assumes that the content being deserialized is JSON.
+///
+/// Used as `#[serde(deserialize_with = "default_on_error")]`.
+pub fn default_on_error<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: DeserializeOwned + Default,
+{
+    let value = match Box::<RawJsonValue>::deserialize(deserializer) {
+        Ok(value) => value,
+        Err(error) => {
+            debug!("deserialization error, using default value: {error}");
+            return Ok(T::default());
+        }
+    };
+
+    Ok(from_raw_json_value(&value).unwrap_or_else(|error: D::Error| {
+        debug!("deserialization error, using default value: {error}");
+        T::default()
+    }))
 }
 
 /// Helper function for ignoring invalid items in a `Vec`, instead letting them cause the entire

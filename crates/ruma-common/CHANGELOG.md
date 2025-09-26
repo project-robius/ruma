@@ -1,5 +1,169 @@
 # [unreleased]
 
+# 0.16.0
+
+Breaking changes:
+
+- `PushCondition::applies`, `ConditionalPushRule::applies`, `AnyPushRuleRef::applies`,
+  `AnyPushRule::applies`, `Ruleset::applies`, `Ruleset::get_actions`, `Ruleset::get_match` all
+  became async, to allow for lazy evaluation of push rules.
+- `UserId` parsing and deserialization are now compatible with all non-compliant
+  user IDs in the wild by default, due to a clarification in the spec.
+  - The `compat-user-id` cargo feature was removed.
+  - `UserId::validate_historical()` and `UserId::validate_strict()` allow to
+    check for spec compliance.
+  - The `(owned_)user_id!` macros always validate against the strict grammar in
+    the spec, regardless of the compat features that are enabled.
+- `(owned_)room_id!` macros disallow the `NUL` byte, due to a clarification in
+  the spec.
+- `(owned_)room_alias_id!` macros disallow the `NUL` byte for the localpart, due
+  to a clarification in the spec.
+- `MatrixVersion` does not implement `Display` anymore as it is not correct to
+  convert `V1_0` to a string. Instead `MatrixVersion::as_str()` can be used that
+  only returns `None` for that same variant.
+- `MatrixVersion::(into/from)_parts` are no longer exposed as public methods.
+  They were usually used to sort `MatrixVersion`s, now the `PartialOrd` and
+  `Ord` implementations can be used instead.
+- `Protocol` and `ProtocolInit` are generic on the protocol instance type.
+- Add support for endpoints that only allow appservices to call them, renaming
+  `AppserviceToken` to `AppserviceTokenOptional`, with the new variant taking
+  `AppserviceToken`'s place.
+- The `redact*` functions in `canonical_json` take `RedactionRules` instead of
+  `RoomVersionId`. This avoids undefined behavior for unknown room versions.
+- `OutgoingRequest::try_into_http_request()`,
+  `OutgoingRequestAppserviceExt::try_into_http_request_with_user_id()` and
+  `Metadata::make_endpoint_url()` take a `SupportedVersions` instead of a
+  `&[MatrixVersion]`.
+- The `metadata` macro allows to specify stable and unstable feature flags for
+  the paths in `history`.
+  - `VersionHistory::new()` takes a
+    `&'static [(Option<&'static str>, &'static str)]` for the unstable paths and
+    a `&'static [(StablePathSelector, &'static str)]` for the stable paths.
+  - `VersionHistory::unstable_paths()` returns an
+    `impl Iterator<Item = (Option<&'static str>, &'static str)>`.
+  - `VersionHistory::stable_paths()` returns an
+    `impl Iterator<Item = (StablePathSelector, &'static str)>`.
+  - `VersionHistory::stable_endpoint_for()` was renamed to `version_path()`.
+  - `VersioningDecision`'s `Stable` variant was renamed to `Version` and
+    `Unstable` was renamed to `Feature`.
+- The syntax of variables in endpoint paths segments in the `metadata` macro has
+  changed: the variable must now be surrounded by `{}` instead of being preceded
+  by `:`. For example `/_matrix/client/foo/{bar}`. This matches the OpenAPI
+  syntax and the new syntax supported by axum 0.8.
+- `JoinRule` and its associated types where imported from `ruma-events` into the
+  `room` module.
+- `space::SpaceRoomJoinRule` was removed and replaced by `room::JoinRuleSummary`.
+- `directory::PublicRoomJoinRule` was moved and renamed to `room::JoinRuleKind`.
+  - It can be constructed with `JoinRule::kind()` and `JoinRuleSummary::kind()`.
+- Make `PushConditionRoomCtx` and `PushConditionPowerLevelsCtx` non-exhaustive.
+- The `versions` field of `SupportedVersions` is now a `BTreeSet<MatrixVersion>`,
+  to make sure that the versions are always deduplicated and sorted.
+- `NotificationPowerLevels` now takes a `NotificationPowerLevelsKey` for the
+  `key`, an enum that accepts any string.
+  - The `key` field of `PushCondition::SenderNotificationPermission` uses the
+    same type.
+- `RoomId::new()` was renamed to `RoomId::new_v1()`, as several formats are now
+  supported for this type.
+- `StateResolutionVersion::V2` now takes `StateResolutionV2Rules` as a unit field, to specify
+  tweaks to be used when resolving state with version 2 of the state resolution algorithm.
+  - This field can be accessed with `StateResolutionVersion::v2_rules`, returning `None` if
+    `state_res` is not `StateResolutionVersion::V2`.
+  - `StateResolutionV2Rules` has the following fields:
+    - `begin_iterative_auth_checks_with_empty_state_map`, to determine whether to begin the first
+      phase of iterative auth checks with an empty state map.
+    - `consider_conflicted_state_subgraph`, to determine whether to include the conflicted state
+      subgraph in the full conflicted state.
+
+Bug fix:
+
+- Set the `disposition` of `RoomVersionRules::MSC2870` as unstable.
+
+Improvements:
+
+- Implement the `Zeroize` trait for the `Base64` type.
+- `ProtocolInstance` has an `instance_id` field, due to a clarification in the
+  spec.
+- The `unstable-unspecified` cargo feature was removed.
+- Add `AnyKeyName` as a helper type to use `KeyId` APIs without validating the
+  key name.
+- Add `IdentityServerBase64PublicKey` as a helper type to decode identity server
+  public keys encoded using standard or URL-safe base64.
+- `RoomVersion` was imported from ruma-state-res and renamed to
+  `RoomVersionRules`, along with the following changes:
+  - `RoomVersionRules::new()` was removed and replaced by
+    `RoomVersionId::rules()`.
+  - The `RoomDisposition` enum was renamed to `RoomVersionDisposition`.
+  - The `event_format` field was renamed to `event_id_format` and the
+    `EventFormat` enum was renamed to `EventIdFormat`.
+  - The tweaks in the authorization rules were extracted into the
+    `AuthorizationRules` struct, which is available in the `authorization` field
+    of `RoomVersionRules`.
+  - The `special_case_aliases_auth` field was renamed to
+    `special_case_room_aliases`.
+  - The `strict_canonicaljson` field was renamed to `strict_canonical_json`.
+  - The `extra_redaction_checks` field was renamed to
+    `special_case_room_redaction`.
+  - The `allow_knocking` field was renamed to `knocking`.
+  - The `restricted_join_rules` field was renamed to `restricted_join_rule`.
+  - `RedactionRules` was added under the `redaction` field.
+  - `SignaturesRules` was added under the `signatures` field.
+- `RoomVersionId` has an `MSC2870` variant for the `org.matrix.msc2870` room
+  version defined in MSC2870.
+- Add `OutgoingRequest::is_supported()` and `VersionHistory::is_supported()` to
+  be able to know if a server advertises support for an endpoint.
+- Re-export `ID_MAX_BYTES` from `ruma-identifiers-validation`.
+- Implement `From<PublicRoomsChunk>` for `RoomSummary`.
+- Add `content_field_redacts` field to `RedactionRules`, which is used to determine whether the
+  `content` or top-level `redacts` field should be used to determine what event an
+  `m.room.redaction` event redacts.
+- Add `SpaceChildOrder` which allows to validate the `order` of an
+  `m.space.child` event.
+- Add support for room version 12 and its unstable version `org.matrix.hydra.11`.
+- Add `explicitly_privilege_room_creators` and `additional_room_creators` to `AuthorizationRules`
+  to indicate whether room creators are considered to have "infinite" power level and whether
+  additional room creators can be specified with the `content.additional_creators` field of an
+  `m.room.create` event respectively.
+- Add `RoomPowerLevelsRules`, to provide tweaks to how the power level of a user is determined,
+  and add it to `PushConditionPowerLevelsCtx` via the `rules` field.
+- Add `room_id_format` to `RoomVersionRules`, to identify the format to use for room IDs depending
+  on the room version.
+- Add `RoomId::new_v2()` for the new format of room IDs. `RoomId::strip_sigil()` allows to access
+  the reference hash used in that format.
+- Add unstable support for in-app-only notifications as per MSC3768 under a new `unstable-msc3768`
+  feature.
+- Add `room_create_event_id_as_room_id` to `AuthorizationRules` to indicate whether the reference
+  hash of the `m.room.create` event is used to construct the room ID. It has other implications,
+  like the `m.room.create` event not having a room ID, and the `m.room.create` event not listed in
+  the `auth_events` of a PDU.
+- Add `require_room_create_room_id` and `allow_room_create_in_auth_events` to `EventFormatRules` to
+  indicate whether the room ID is required for `m.room.create` events and whether the
+  event ID of the `m.room.create` is allowed in the `auth_events`, respectively.
+
+# 0.15.4
+
+Bug fix:
+
+- Fix `serde::default_on_error` deserialization helper. It was working with
+  `serde_json::from_value` but not other functions like
+  `serde_json::from_(str/slice)`. It now works with all 3 methods but is limited
+  to deserializing JSON.
+
+# 0.15.3
+
+Improvements:
+
+- Add `RoomSummary` that represents the summary of a room's state.
+  - Implement `From<RoomSummary>` for `PublicRoomsChunk`
+- Add `MatrixVersion::V1_15`.
+- `PublicRoomJoinRule` now includes all possible join rule kinds, due to a
+  clarification in Matrix 1.15.
+- Add `serde::default_on_error()` as a helper to ignore errors during
+  deserialization.
+- Implement conversions between `PublicRoomJoinRule` and `SpaceRoomJoinRule`.
+- Add `FeatureFlag` as an enum whose variants are the flags of features supported by Ruma.
+- Add `SupportedVersions`, a type to parse `/versions` responses to get lists
+  of supported versions and features.
+
 # 0.15.2
 
 Bug fixes:

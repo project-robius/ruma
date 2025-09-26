@@ -1,9 +1,80 @@
 # [unreleased]
 
+# 0.21.0
+
+Breaking changes:
+
+- Use `AuthType` for the `auth_type` of `get_uiaa_fallback_page`'s Request.
+- Only allow appservices to call `appservice::request_ping::v1` and
+  `appservice::set_room_visibility::v1`
+- The `params` field of `UiaaInfo` is now optional. It was never required in the
+  specification. Servers are encouraged to keep sending it for compatibility with
+  clients that required it.
+- The `reason` field of `report_room::v3::Request` is now required, due to a
+  clarification in the spec.
+- Remove `Capabilities::iter()` and the associated types. The code is completely
+  custom and hasn't been kept up-to-date, and as far as we know it is not used
+  by anyone, so we prefer to remove it to avoid an unnecessary maintenance
+  burden and potential issues in the future.
+- Move `Capabilities` and associated types into the
+  `discovery::get_capabilities::v3` module, for consistency with other endpoints.
+- `get_supported_versions::Response::known_versions()` was removed.
+  `as_supported_versions()` should be used instead.
+- Update the endpoint metadata definitions to use the new syntax for variables.
+- `SpaceHierarchyRoomsChunk` is now built around `RoomSummary`, and
+  `SpaceHierarchyRoomsChunkInit` was removed.
+- Add `JsonCastable` bound to `Raw::{cast, cast_ref, deserialize_as}`. When
+  a type `U` implements `JsonCastable<T>` it means that it is safe to cast from
+  `U` to `T` because `T` can be deserialized from the same JSON as `U`. It is
+  still possible to bypass that bound by using the corresponding methods of
+  `Raw` with an `_unchecked` suffix.
+- Rename `state::get_state_events_for_key` to `state::get_state_event_for_key`.
+- Allow specifying the event format for `state::get_state_event_for_key`, meaning the response may
+  either be `Raw<AnyStateEvent>` or `Raw<AnyStateEventContent>`, depending on the format specified
+  in the request.
+- `sync_events::v3::State` is now an enum, to prepare for the stabilization of MSC4222. The state
+  before the timeline, corresponding to the `state` field in the Matrix specification, is available
+  in the `Before` variant, and the struct representing its content was renamed to `StateEvents`. 
+- `get_profile::v3::Response` has no public fields anymore but stores custom
+  fields. The fields can be accessed with `.get()`, `.iter()` or `.into_iter()`.
+  `Response::new()` takes no arguments and creates an empty response. Fields can
+  be added using `.set()`, or the `FromIterator` and `Extend` implementations.
+- Replace `MembershipEventFilter` with `MembershipState` in `get_member_events`, since both enums
+  should always be identical.
+
+Improvements:
+
+- Added support for the sliding sync extension for thread subscriptions, as well as the
+  accompanying endpoint, both from experimental MSC4308.
+- Added support for the experiment MSC4306 thread subscription endpoints.
+- For the `membership::join_room_by_id_or_alias` and `knock::knock_room`
+  endpoints, the `server_name` query parameter is only serialized if the server
+  doesn't advertise at least one version that supports the `via` query
+  parameter. The former was removed in Matrix 1.14.
+- Add `additional_creators` field to `CreationContent` of `create_room` and `Request` of
+  `upgrade_room`, allowing clients to specify which other users (if any) should be considered
+  additional creators from room version 12 onwards.
+- Add unstable support for the `use_state_after` query parameter in `sync_events::v3::Request`, and
+  the corresponding `State::After` variant in the response (`state_after` in the spec), according to
+  MSC4222.
+- Add unstable support for extended profiles, as per MSC4133.
+
+# 0.20.4
+
 Improvements:
 
 - All the types used in `discover_homeserver::Response` now implement PartialEq
   and Eq.
+- Use `ruma_common::RoomSummary` for the `room::get_summary` endpoint.
+- Add the `encryption`, `room_version` and `allowed_room_ids` fields to
+  `SpaceHierarchyRoomsChunk`, according to MSC3266 / Matrix 1.15.
+- Stabilize the support for the room summary endpoint, according to Matrix 1.15.
+- Stabilize support for the OAuth 2.0 authorization server metadata endpoint,
+  according to Matrix 1.15.
+  - The `discovery::get_authentication_issuer` endpoint was removed.
+  - Some fields of `AuthorizationServerMetadata` are now behind the
+    `unstable-msc4108` or `unstable-msc4191` cargo features.
+- Add `get_supported_versions::Response::as_supported_versions()`.
 
 # 0.20.3
 

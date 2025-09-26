@@ -1,6 +1,6 @@
 [package]
 name = "ruma-html"
-version = "0.4.1"
+version = "0.5.0"
 description = "Opinionated HTML parsing and manipulating."
 homepage = "https://ruma.dev/"
 keywords = ["matrix", "ruma", "html", "parser"]
@@ -20,7 +20,6 @@ unstable-msc4286 = []
 [dependencies]
 as_variant = { workspace = true }
 html5ever = "0.29.0"
-phf = { version = "0.11.1", features = ["macros"] }
 ruma-common = { workspace = true, optional = true }
 tracing = { workspace = true, features = ["attributes"] }
 wildmatch = "2.0.0"

@@ -1,5 +1,56 @@
 # [unreleased]
 
+# 0.12.0
+
+Breaking changes:
+
+- Remove the `origin` field in `create_join_event::{v1/v2}::RoomState` due to a
+  clarification in the spec.
+- The type of `signed` in `thirdparty::bind_callback::v1::Request` was fixed. It
+  uses `Raw<SignedContent>` from `RoomMemberEventContent`.
+- The type of `content` in `thirdparty::exchange_invite::v1::Request` was fixed.
+  It is a `RoomMemberEventContent`. A new constructor was added,
+  `with_third_party_invite()` that constructs the event content from a
+  `ThirdPartyInvite`.
+- Update the endpoint metadata definitions to use the new syntax for variables.
+- Use `ruma_common::RoomSummary` for the `space::get_hierarchy` endpoint.
+  - `SpaceHierarchyParentSummary` is now built around `RoomSummary`, and
+    `SpaceHierarchyParentSummaryInit` was removed.
+  - `SpaceHierarchyChildSummary` was replaced by `RoomSummary` and
+    `SpaceHierarchyChildSummaryInit` was removed.
+- Merge the `knock` module into `membership`, and rename `create_knock_event_template` and
+  `send_knock` to `prepare_knock_event` and `create_knock_event` respectively for consistency.
+- Use `RawStrippedState` instead of `Raw<AnyStrippedStateEvent>`, to allow non-stripped events to be
+  represented for `create_invite` and `create_knock_event`.
+
+Bug fixes:
+
+- Add constructor for `thirdparty::bind_callback::v1::Response`.
+
+Improvements:
+
+- ruma-server-util was merged into this crate. `XMatrix` is available in the
+  `authentication` module.
+- Add a method to construct a `thirdparty::exchange_invite::v1::Request` from a
+  `thirdparty::bind_callback::v1::ThirdPartyInvite` and a
+  `RoomThirdPartyInviteEventContent`.
+- Add unstable support for full PDUs in `create_invite` and `create_knock_event` alongside stripped
+  events from MSC4311 behind the `unstable-msc4311` feature.
+
+# 0.11.2
+
+Bug fixes:
+
+- Restore the `unstable-unspecified` cargo feature. There are still a few places
+  that rely on that feature that would require a breaking change to remove the
+  feature.
+
+Improvements:
+
+- Add the `encryption` and `room_version` fields to
+  `SpaceHierarchyParentSummary` and `SpaceHierarchyChildSummary`, according to
+  MSC3266 / Matrix 1.15.
+
 # 0.11.1
 
 Improvements:

@@ -7,7 +7,7 @@ homepage = "https://ruma.dev/"
 repository = "https://github.com/ruma/ruma"
 readme = "README.md"
 license = "MIT"
-version = "0.13.0"
+version = "0.14.0"
 edition = "2021"
 rust-version = { workspace = true }
 
@@ -16,8 +16,9 @@ all-features = true
 
 [dependencies]
 js_int = { workspace = true }
-ruma-common = { workspace = true }
+ruma-common = { workspace = true, features = ["canonical-json"] }
 ruma-events = { workspace = true }
+ruma-signatures = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -27,12 +28,12 @@ tracing = { workspace = true }
 criterion = { workspace = true, optional = true }
 
 [dev-dependencies]
+as_variant = { workspace = true }
 insta = { workspace = true }
 maplit = { workspace = true }
 rand = { workspace = true }
-ruma-events = { workspace = true, features = ["unstable-pdu"] }
 similar = { workspace = true }
-tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 
 [[bench]]
 name = "state_res_bench"

@@ -4,7 +4,7 @@
 
 use js_int::UInt;
 use ruma_common::OwnedUserId;
-use serde::{self, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 pub mod v3;
 

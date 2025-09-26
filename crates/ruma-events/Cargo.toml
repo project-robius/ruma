@@ -1,6 +1,6 @@
 [package]
 name = "ruma-events"
-version = "0.30.3"
+version = "0.31.0"
 description = "Serializable types for the events in the Matrix specification."
 homepage = "https://ruma.dev/"
 keywords = ["matrix", "chat", "messaging", "ruma"]
@@ -31,13 +31,13 @@ unstable-msc3245-v1-compat = []
 unstable-msc3246 = ["unstable-msc3927"]
 unstable-msc3381 = ["unstable-msc1767"]
 unstable-msc3401 = []
+unstable-msc3414 = []
 unstable-msc3488 = ["unstable-msc1767"]
 unstable-msc3489 = ["unstable-msc3488"]
 unstable-msc3551 = ["unstable-msc3956"]
 unstable-msc3552 = ["unstable-msc3551"]
 unstable-msc3553 = ["unstable-msc3552"]
 unstable-msc3554 = ["unstable-msc1767"]
-unstable-msc3765 = ["unstable-msc1767"]
 unstable-msc3927 = ["unstable-msc3551"]
 unstable-msc3954 = ["unstable-msc1767"]
 unstable-msc3955 = ["unstable-msc1767"]
@@ -46,9 +46,12 @@ unstable-msc4075 = ["unstable-msc3401"]
 unstable-msc4095 = []
 unstable-msc4171 = []
 unstable-msc4230 = []
+unstable-msc4268 = []
 unstable-msc4274 = []
 unstable-msc4278 = []
-unstable-pdu = []
+unstable-msc4319 = []
+unstable-msc4310 = []
+unstable-msc4334 = ["dep:language-tags"]
 
 # Allow some mandatory fields to be missing, defaulting them to an empty string
 # in deserialization.
@@ -65,11 +68,20 @@ compat-tag-info = []
 # https://github.com/matrix-org/matrix-spec/issues/1667
 compat-encrypted-stickers = []
 
+# The predecessor field of RoomCreateEventContent is ignored if its
+# deserialization fails.
+compat-lax-room-create-deser = []
+
+# The topic_block (`m.topic`) field of RoomTopicEventContent is ignored if its
+# deserialization fails.
+compat-lax-room-topic-deser = []
+
 [dependencies]
 as_variant = { workspace = true }
 indexmap = { version = "2.0.0", features = ["serde"] }
 js_int = { workspace = true, features = ["serde"] }
 js_option = "0.1.0"
+language-tags = { workspace = true, optional = true }
 percent-encoding = "2.1.0"
 pulldown-cmark = { version = "0.13.0", optional = true, default-features = false, features = ["html"] }
 regex = { version = "1.5.6", default-features = false, features = ["std", "perf"] }
@@ -84,6 +96,7 @@ tracing = { workspace = true, features = ["attributes"] }
 url = { workspace = true }
 web-time = { workspace = true }
 wildmatch = "2.0.0"
+zeroize = { workspace = true }
 
 # dev-dependencies can't be optional, so this is a regular dependency
 criterion = { workspace = true, optional = true }

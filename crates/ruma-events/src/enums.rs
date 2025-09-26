@@ -2,6 +2,11 @@ use ruma_common::{
     serde::from_raw_json_value, EventId, MilliSecondsSinceUnixEpoch, OwnedRoomId, RoomId,
     TransactionId, UserId,
 };
+#[cfg(feature = "unstable-msc3381")]
+use ruma_events::{
+    poll::{start::PollStartEventContent, unstable_start::UnstablePollStartEventContent},
+    room::encrypted::Replacement,
+};
 use ruma_macros::{event_enum, EventEnumFromEvent};
 use serde::{de, Deserialize};
 use serde_json::value::RawValue as RawJsonValue;
@@ -52,6 +57,11 @@ event_enum! {
         #[cfg(feature = "unstable-msc2867")]
         #[ruma_enum(ident = UnstableMarkedUnread)]
         "com.famedly.marked_unread" => super::marked_unread,
+        #[cfg(feature = "unstable-msc4278")]
+        "m.media_preview_config" => super::media_preview_config,
+        #[cfg(feature = "unstable-msc4278")]
+        #[ruma_enum(ident = UnstableMediaPreviewConfig)]
+        "io.element.msc4278.media_preview_config" => super::media_preview_config,
     }
 
     /// Any ephemeral room event.
@@ -129,7 +139,14 @@ event_enum! {
         "org.matrix.msc3245.voice.v2" => super::voice,
         #[cfg(feature = "unstable-msc4075")]
         #[ruma_enum(alias = "m.call.notify")]
+        #[allow(deprecated)]
         "org.matrix.msc4075.call.notify" => super::call::notify,
+        #[cfg(feature = "unstable-msc4075")]
+        #[ruma_enum(alias = "m.rtc.notification")]
+        "org.matrix.msc4075.rtc.notification" => super::rtc::notification,
+        #[cfg(feature = "unstable-msc4310")]
+        #[ruma_enum(alias = "m.rtc.decline")]
+        "org.matrix.msc4310.rtc.decline" => super::rtc::decline,
     }
 
     /// Any state event.
@@ -142,9 +159,14 @@ event_enum! {
         "m.room.canonical_alias" => super::room::canonical_alias,
         "m.room.create" => super::room::create,
         "m.room.encryption" => super::room::encryption,
+        #[cfg(feature = "unstable-msc3414")]
+        "m.room.encrypted" => super::room::encrypted::unstable_state,
         "m.room.guest_access" => super::room::guest_access,
         "m.room.history_visibility" => super::room::history_visibility,
         "m.room.join_rules" => super::room::join_rules,
+        #[cfg(feature = "unstable-msc4334")]
+        #[ruma_enum(alias = "m.room.language")]
+        "org.matrix.msc4334.room.language" => super::room::language,
         "m.room.member" => super::room::member,
         "m.room.name" => super::room::name,
         "m.room.pinned_events" => super::room::pinned_events,
@@ -173,7 +195,11 @@ event_enum! {
     enum ToDevice {
         "m.dummy" => super::dummy,
         "m.room_key" => super::room_key,
+        #[cfg(feature = "unstable-msc4268")]
+        #[ruma_enum(alias = "m.room_key_bundle")]
+        "io.element.msc4268.room_key_bundle" => super::room_key_bundle,
         "m.room_key_request" => super::room_key_request,
+        "m.room_key.withheld" => super::room_key::withheld,
         "m.forwarded_room_key" => super::forwarded_room_key,
         "m.key.verification.request" => super::key::verification::request,
         "m.key.verification.ready" => super::key::verification::ready,
@@ -403,9 +429,25 @@ impl AnyMessageLikeEventContent {
                 Some(encrypted::Relation::Reference(relates_to.clone()))
             }
             #[cfg(feature = "unstable-msc3381")]
-            Self::PollStart(_) | Self::UnstablePollStart(_) => None,
+            Self::UnstablePollStart(UnstablePollStartEventContent::New(content)) => {
+                content.relates_to.clone().map(Into::into)
+            }
+            #[cfg(feature = "unstable-msc3381")]
+            Self::UnstablePollStart(UnstablePollStartEventContent::Replacement(content)) => {
+                Some(encrypted::Relation::Replacement(Replacement::new(
+                    content.relates_to.event_id.clone(),
+                )))
+            }
+            #[cfg(feature = "unstable-msc3381")]
+            Self::PollStart(PollStartEventContent { relates_to, .. }) => {
+                relates_to.clone().map(Into::into)
+            }
             #[cfg(feature = "unstable-msc4075")]
             Self::CallNotify(_) => None,
+            #[cfg(feature = "unstable-msc4075")]
+            Self::RtcNotification(ev) => ev.relates_to.clone().map(encrypted::Relation::Reference),
+            #[cfg(feature = "unstable-msc4310")]
+            Self::RtcDecline(ev) => Some(encrypted::Relation::Reference(ev.relates_to.clone())),
             Self::CallSdpStreamMetadataChanged(_)
             | Self::CallNegotiate(_)
             | Self::CallReject(_)
