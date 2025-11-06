@@ -47,12 +47,10 @@ unstable-msc3843 = []
 unstable-msc3983 = []
 unstable-msc4108 = ["ruma-common/unstable-msc4108"]
 unstable-msc4121 = []
-unstable-msc4133 = []
 unstable-msc4140 = ["ruma-common/unstable-msc4140"]
 unstable-msc4143 = []
 unstable-msc4186 = ["ruma-common/unstable-msc4186"]
 unstable-msc4191 = []
-unstable-msc4222 = []
 # Thread subscription support.
 unstable-msc4306 = []
 unstable-msc4308 = []
@@ -64,7 +62,7 @@ bytes = { workspace = true }
 date_header = "1.0.5"
 http = { workspace = true }
 js_int = { workspace = true, features = ["serde"] }
-js_option = "0.1.1"
+js_option = { workspace = true }
 maplit = { workspace = true }
 ruma-common = { workspace = true, features = ["api"] }
 ruma-events = { workspace = true }

@@ -1,6 +1,6 @@
-use std::{collections::BTreeMap, ops::RangeBounds, str::FromStr};
-#[cfg(feature = "unstable-msc4306")]
-use std::{future::Future, pin::Pin, sync::Arc};
+use std::{
+    collections::BTreeMap, future::Future, ops::RangeBounds, pin::Pin, str::FromStr, sync::Arc,
+};
 
 use js_int::{Int, UInt};
 use regex::bytes::Regex;
@@ -10,12 +10,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::value::Value as JsonValue;
 use wildmatch::WildMatch;
 
-#[cfg(feature = "unstable-msc4306")]
-use crate::EventId;
 use crate::{
     power_levels::{NotificationPowerLevels, NotificationPowerLevelsKey},
     room_version_rules::RoomPowerLevelsRules,
-    OwnedRoomId, OwnedUserId, UserId,
+    EventId, OwnedRoomId, OwnedUserId, UserId,
 };
 #[cfg(feature = "unstable-msc3931")]
 use crate::{PrivOwnedStr, RoomVersionId};
@@ -32,7 +30,7 @@ pub use self::{
 /// Features supported by room versions.
 #[cfg(feature = "unstable-msc3931")]
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, PartialEq, Eq, StringEnum)]
+#[derive(Clone, StringEnum)]
 #[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 pub enum RoomVersionFeature {
     /// m.extensible_events
@@ -66,8 +64,6 @@ impl RoomVersionFeature {
             | RoomVersionId::V11
             | RoomVersionId::V12
             | RoomVersionId::_Custom(_) => vec![],
-            #[cfg(feature = "unstable-hydra")]
-            RoomVersionId::HydraV11 => vec![],
             #[cfg(feature = "unstable-msc2870")]
             RoomVersionId::MSC2870 => vec![],
         }
@@ -94,6 +90,7 @@ pub enum PushCondition {
 
     /// Matches unencrypted messages where `content.body` contains the owner's display name in that
     /// room.
+    #[deprecated]
     ContainsDisplayName,
 
     /// Matches the current number of members in the room.
@@ -188,6 +185,7 @@ impl PushCondition {
 
         match self {
             Self::EventMatch { key, pattern } => check_event_match(event, key, pattern, context),
+            #[allow(deprecated)]
             Self::ContainsDisplayName => {
                 let Some(value) = event.get_str("content.body") else { return false };
                 value.matches_pattern(&context.user_display_name, true)
@@ -286,19 +284,26 @@ pub struct PushConditionRoomCtx {
     /// [MSC4306]: https://github.com/matrix-org/matrix-spec-proposals/pull/4306
     #[cfg(feature = "unstable-msc4306")]
     has_thread_subscription_fn: Option<Arc<HasThreadSubscriptionFn>>,
+
+    /// When the `unstable-msc4306` feature is enabled with the field above, it changes the auto
+    /// trait implementations of the struct to `!RefUnwindSafe` and `!UnwindSafe`. So we use
+    /// `PhantomData` to keep the same bounds on the field when the feature is disabled, to always
+    /// have the same auto trait implementations.
+    #[cfg(not(feature = "unstable-msc4306"))]
+    has_thread_subscription_fn: std::marker::PhantomData<Arc<HasThreadSubscriptionFn>>,
 }
 
-#[cfg(all(feature = "unstable-msc4306", not(target_family = "wasm")))]
+#[cfg(not(target_family = "wasm"))]
 type HasThreadSubscriptionFuture<'a> = Pin<Box<dyn Future<Output = bool> + Send + 'a>>;
 
-#[cfg(all(feature = "unstable-msc4306", target_family = "wasm"))]
+#[cfg(target_family = "wasm")]
 type HasThreadSubscriptionFuture<'a> = Pin<Box<dyn Future<Output = bool> + 'a>>;
 
-#[cfg(all(feature = "unstable-msc4306", not(target_family = "wasm")))]
+#[cfg(not(target_family = "wasm"))]
 type HasThreadSubscriptionFn =
     dyn for<'a> Fn(&'a EventId) -> HasThreadSubscriptionFuture<'a> + Send + Sync;
 
-#[cfg(all(feature = "unstable-msc4306", target_family = "wasm"))]
+#[cfg(target_family = "wasm")]
 type HasThreadSubscriptionFn = dyn for<'a> Fn(&'a EventId) -> HasThreadSubscriptionFuture<'a>;
 
 impl std::fmt::Debug for PushConditionRoomCtx {
@@ -335,8 +340,7 @@ impl PushConditionRoomCtx {
             power_levels: None,
             #[cfg(feature = "unstable-msc3931")]
             supported_features: Vec::new(),
-            #[cfg(feature = "unstable-msc4306")]
-            has_thread_subscription_fn: None,
+            has_thread_subscription_fn: Default::default(),
         }
     }
 
@@ -648,6 +652,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn serialize_contains_display_name_condition() {
         assert_eq!(
             to_json_value(PushCondition::ContainsDisplayName).unwrap(),
@@ -697,6 +702,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn deserialize_contains_display_name_condition() {
         assert_matches!(
             from_json_value::<PushCondition>(json!({ "kind": "contains_display_name" })).unwrap(),
@@ -759,7 +765,7 @@ mod tests {
         assert!(!"m".matches_word("[[:alpha:]]?"));
         assert!("[[:alpha:]]!".matches_word("[[:alpha:]]?"));
 
-        // From the spec: <https://spec.matrix.org/v1.15/client-server-api/#conditions-1>
+        // From the spec: <https://spec.matrix.org/v1.16/client-server-api/#conditions-1>
         assert!("An example event.".matches_word("ex*ple"));
         assert!("exple".matches_word("ex*ple"));
         assert!("An exciting triple-whammy".matches_word("ex*ple"));
@@ -808,7 +814,7 @@ mod tests {
         assert!("".matches_pattern("*", false));
         assert!(!"foo".matches_pattern("", false));
 
-        // From the spec: <https://spec.matrix.org/v1.15/client-server-api/#conditions-1>
+        // From the spec: <https://spec.matrix.org/v1.16/client-server-api/#conditions-1>
         assert!("Lunch plans".matches_pattern("lunc?*", false));
         assert!("LUNCH".matches_pattern("lunc?*", false));
         assert!(!" lunch".matches_pattern("lunc?*", false));
@@ -909,6 +915,7 @@ mod tests {
     }
 
     #[apply(test!)]
+    #[allow(deprecated)]
     async fn contains_display_name_applies() {
         let context = push_context();
         let first_event = first_flattened_event();

@@ -15,7 +15,7 @@ use serde::Deserialize;
 use serde_json::from_str as from_json_str;
 
 // Keep in sync with version in `rust-toolchain.toml` and `.github/workflows/ci.yml`
-const NIGHTLY: &str = "nightly-2025-08-08";
+const NIGHTLY: &str = "nightly-2025-10-01";
 
 mod bench;
 mod cargo;
@@ -23,6 +23,7 @@ mod ci;
 mod doc;
 #[cfg(feature = "default")]
 mod release;
+mod semver;
 #[cfg(feature = "default")]
 mod util;
 
@@ -32,6 +33,7 @@ use ci::{CiArgs, CiTask};
 use doc::DocTask;
 #[cfg(feature = "default")]
 use release::{ReleaseArgs, ReleaseTask};
+use semver::{SemverArgs, SemverTask};
 use xshell::Shell;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -54,6 +56,8 @@ enum Command {
     Release(ReleaseArgs),
     /// Run benchmarks
     Bench(BenchTask),
+    /// Run semver checks
+    Semver(SemverArgs),
 }
 
 fn main() -> Result<()> {
@@ -69,6 +73,10 @@ fn main() -> Result<()> {
             task.run()
         }
         Command::Bench(bench) => bench.run(),
+        Command::Semver(args) => {
+            let semver = SemverTask::new(args.cmd, args.no_color)?;
+            semver.run()
+        }
     }
 }
 
