@@ -10,7 +10,7 @@ use http::Method;
 use ruma_macros::StringEnum;
 
 use super::{auth_scheme::AuthScheme, error::UnknownVersionError, path_builder::PathBuilder};
-use crate::{api::error::IntoHttpError, serde::slice_to_buf, PrivOwnedStr, RoomVersionId};
+use crate::{PrivOwnedStr, RoomVersionId, api::error::IntoHttpError, serde::slice_to_buf};
 
 /// Convenient constructor for [`Metadata`] implementation.
 ///
@@ -159,28 +159,24 @@ macro_rules! metadata {
 
     ( @field history: {
         $( unstable $(($unstable_feature:literal))? => $unstable_path:literal, )*
-        $( stable ($stable_feature_only:literal) => $stable_feature_path:literal, )?
-        $( $( $version:literal $(| stable ($stable_feature:literal))? => $rhs:tt, )+ )?
+        $( stable ($stable_feature_only:literal) => $stable_feature_path:literal, )*
+        $( $version:literal $(| stable ($stable_feature:literal))? => $stable_rhs:tt, )*
     } ) => {
         $crate::metadata! {
             @history_impl
-            [ $( $unstable_path $(= $unstable_feature)? ),* ]
-            $( stable ($stable_feature_only) => $stable_feature_path, )?
+            $( unstable $( ($unstable_feature) )? => $unstable_path, )*
+            $( stable ($stable_feature_only) => $stable_feature_path, )*
             // Flip left and right to avoid macro parsing ambiguities
-            $( $( $rhs = $version $(| stable ($stable_feature))? ),+ )?
+            $( $stable_rhs = $version $( | stable ($stable_feature) )?, )*
         }
     };
 
     ( @history_impl
-        [ $( $unstable_path:literal $(= $unstable_feature:literal)? ),* ]
-        $( stable ($stable_feature_only:literal) => $stable_feature_path:literal, )?
-        $(
-            $( $stable_path:literal = $version:literal $(| stable ($stable_feature:literal))? ),+
-            $(,
-                deprecated = $deprecated_version:literal
-                $(, removed = $removed_version:literal )?
-            )?
-        )?
+        $( unstable $(($unstable_feature:literal))? => $unstable_path:literal, )*
+        $( stable ($stable_feature_only:literal) => $stable_feature_path:literal, )*
+        $( $stable_path:literal = $version:literal $(| stable ($stable_feature:literal))?, )*
+        $( deprecated = $deprecated_version:literal, )?
+        $( removed = $removed_version:literal, )?
     ) => {
         type PathBuilder = $crate::api::path_builder::VersionHistory;
         const PATH_BUILDER: $crate::api::path_builder::VersionHistory = $crate::api::path_builder::VersionHistory::new(
@@ -189,14 +185,14 @@ macro_rules! metadata {
                 $((
                     $crate::metadata!(@stable_path_selector stable($stable_feature_only)),
                     $stable_feature_path
-                ),)?
-                $($((
-                    $crate::metadata!(@stable_path_selector $version $(| stable($stable_feature))?),
+                ),)*
+                $((
+                    $crate::metadata!(@stable_path_selector $version $( | stable($stable_feature) )?),
                     $stable_path
-                )),+)?
+                ),)*
             ],
-            $crate::metadata!(@optional_version $($( $deprecated_version )?)?),
-            $crate::metadata!(@optional_version $($($( $removed_version )?)?)?),
+            $crate::metadata!(@optional_version $( $deprecated_version )?),
+            $crate::metadata!(@optional_version $( $removed_version )?),
         );
     };
 
@@ -245,11 +241,7 @@ pub trait Metadata: Sized {
     where
         B: Default + BufMut,
     {
-        if Self::METHOD == Method::GET {
-            Default::default()
-        } else {
-            slice_to_buf(b"{}")
-        }
+        if Self::METHOD == Method::GET { Default::default() } else { slice_to_buf(b"{}") }
     }
 
     /// Generate the endpoint URL for this endpoint.
@@ -386,6 +378,11 @@ pub enum MatrixVersion {
     ///
     /// See <https://spec.matrix.org/v1.16/>.
     V1_16,
+
+    /// Version 1.17 of the Matrix specification, released in Q4 2025.
+    ///
+    /// See <https://spec.matrix.org/v1.17/>.
+    V1_17,
 }
 
 impl TryFrom<&str> for MatrixVersion {
@@ -416,6 +413,7 @@ impl TryFrom<&str> for MatrixVersion {
             "v1.14" => V1_14,
             "v1.15" => V1_15,
             "v1.16" => V1_16,
+            "v1.17" => V1_17,
             _ => return Err(UnknownVersionError),
         })
     }
@@ -468,6 +466,7 @@ impl MatrixVersion {
             MatrixVersion::V1_14 => "v1.14",
             MatrixVersion::V1_15 => "v1.15",
             MatrixVersion::V1_16 => "v1.16",
+            MatrixVersion::V1_17 => "v1.17",
         };
 
         Some(string)
@@ -493,6 +492,7 @@ impl MatrixVersion {
             MatrixVersion::V1_14 => (1, 14),
             MatrixVersion::V1_15 => (1, 15),
             MatrixVersion::V1_16 => (1, 16),
+            MatrixVersion::V1_17 => (1, 17),
         }
     }
 
@@ -516,6 +516,7 @@ impl MatrixVersion {
             (1, 14) => Ok(MatrixVersion::V1_14),
             (1, 15) => Ok(MatrixVersion::V1_15),
             (1, 16) => Ok(MatrixVersion::V1_16),
+            (1, 17) => Ok(MatrixVersion::V1_17),
             _ => Err(UnknownVersionError),
         }
     }
@@ -570,11 +571,7 @@ impl MatrixVersion {
         use konst::primitive::cmp::cmp_u8;
 
         let major_ord = cmp_u8(self_parts.0, other_parts.0);
-        if major_ord.is_ne() {
-            major_ord
-        } else {
-            cmp_u8(self_parts.1, other_parts.1)
-        }
+        if major_ord.is_ne() { major_ord } else { cmp_u8(self_parts.1, other_parts.1) }
     }
 
     // Internal function to check if this version is the legacy (v1.0) version in const-fn contexts
@@ -622,7 +619,9 @@ impl MatrixVersion {
             // <https://spec.matrix.org/v1.15/rooms/#complete-list-of-room-versions>
             | MatrixVersion::V1_15 => RoomVersionId::V11,
             // <https://spec.matrix.org/v1.16/rooms/#complete-list-of-room-versions>
-            MatrixVersion::V1_16 => RoomVersionId::V12,
+            MatrixVersion::V1_16
+            // <https://spec.matrix.org/v1.17/rooms/#complete-list-of-room-versions>
+            | MatrixVersion::V1_17 => RoomVersionId::V12,
         }
     }
 }
@@ -768,6 +767,15 @@ pub enum FeatureFlag {
     #[cfg(feature = "unstable-msc4186")]
     #[ruma_enum(rename = "org.matrix.simplified_msc3575")]
     Msc4186,
+
+    /// `org.matrix.msc4380_invite_permission_config` ([MSC])
+    ///
+    /// Invite Blocking.
+    ///
+    /// [MSC]: https://github.com/matrix-org/matrix-spec-proposals/pull/4380
+    #[cfg(feature = "unstable-msc4380")]
+    #[ruma_enum(rename = "org.matrix.msc4380")]
+    Msc4380,
 
     #[doc(hidden)]
     _Custom(PrivOwnedStr),

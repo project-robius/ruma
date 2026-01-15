@@ -8,10 +8,10 @@ pub mod v3 {
     //! [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidstateeventtypestatekey
 
     use ruma_common::{
-        api::{auth_scheme::AccessToken, response, Metadata},
+        OwnedRoomId,
+        api::{auth_scheme::AccessToken, response},
         metadata,
         serde::Raw,
-        OwnedRoomId,
     };
     use ruma_events::{AnyStateEvent, AnyStateEventContent, StateEventType};
     use serde_json::value::RawValue as RawJsonValue;
@@ -130,7 +130,7 @@ pub mod v3 {
             access_token: ruma_common::api::auth_scheme::SendAccessToken<'_>,
             considering: std::borrow::Cow<'_, ruma_common::api::SupportedVersions>,
         ) -> Result<http::Request<T>, ruma_common::api::error::IntoHttpError> {
-            use ruma_common::api::auth_scheme::AuthScheme;
+            use ruma_common::api::{Metadata, auth_scheme::AuthScheme};
 
             let query_string = serde_html_form::to_string(RequestQuery { format: self.format })?;
 

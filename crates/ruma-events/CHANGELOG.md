@@ -1,5 +1,14 @@
 # [unreleased]
 
+# 0.32.1
+
+Improvements:
+
+- Add list of state event types recommended by the spec for servers to transfer
+  upon room upgrade.
+
+# 0.32.0
+
 Breaking changes:
 
 - Upgrade `js_option` to v0.2.0
@@ -21,6 +30,8 @@ Breaking changes:
 
 Improvements:
 
+- Add unstable support for the `m.invite_permission_config` account data event which blocks
+  invites to a user, wholesale: ([MSC4380](https://github.com/matrix-org/matrix-spec-proposals/pull/4380)).
 - Add support for the room account data `m.space_order` event which powers top 
   level space ordering as per [MSC3230](https://github.com/matrix-org/matrix-spec-proposals/pull/3230).
 - Add `m.rtc.notification` event support and deprecate the (non MSC conformant)
@@ -28,6 +39,9 @@ Improvements:
 - Add `dm.filament.do_not_disturb` account data event as per MSC4359.
 - `RoomMemberUnsigned` has a `knock_room_state` field. This is the equivalent to
   `invite_room_state` but after a knock rather than an invite.
+- The `unstable-msc4362` feature is renamed (previously `unstable-msc3414`).
+- The unstable prefix for `encrypt_state_events` in `RoomEncryptionEventContent`
+  is renamed to `io.element.msc4362.` (previously `io.element.msc3414.`).
 
 # 0.31.0
 
@@ -489,7 +503,7 @@ Deprecation of the crate. It is now part of ruma-common 0.9.0.
 
 Breaking changes:
 
-* Bump versions of `ruma-common`, `ruma-idenfiers`
+* Bump versions of `ruma-common`, `ruma-identifiers`
 
 # 0.25.0
 

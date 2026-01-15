@@ -4,10 +4,10 @@
 
 use std::borrow::Cow;
 
-use js_int::{uint, UInt};
+use js_int::{UInt, uint};
 use ruma_common::{
-    serde::{Base64, JsonObject},
     KeyDerivationAlgorithm,
+    serde::{Base64, JsonObject},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -57,7 +57,7 @@ fn is_default_bits(val: &UInt) -> bool {
 ///
 /// The only algorithm currently specified is `m.secret_storage.v1.aes-hmac-sha2`, so this
 /// essentially represents `AesHmacSha2KeyDescription` in the
-/// [spec](https://spec.matrix.org/v1.16/client-server-api/#msecret_storagev1aes-hmac-sha2).
+/// [spec](https://spec.matrix.org/v1.17/client-server-api/#msecret_storagev1aes-hmac-sha2).
 #[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 #[derive(Clone, Debug, Serialize, EventContent)]
 #[ruma_event(type = "m.secret_storage.key.*", kind = GlobalAccountData)]
@@ -137,7 +137,7 @@ impl SecretStorageEncryptionAlgorithm {
 /// The key properties for the `m.secret_storage.v1.aes-hmac-sha2` algorithm.
 ///
 /// Corresponds to the AES-specific properties of `AesHmacSha2KeyDescription` in the
-/// [spec](https://spec.matrix.org/v1.16/client-server-api/#msecret_storagev1aes-hmac-sha2).
+/// [spec](https://spec.matrix.org/v1.17/client-server-api/#msecret_storagev1aes-hmac-sha2).
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 pub struct SecretStorageV1AesHmacSha2Properties {
@@ -172,7 +172,7 @@ pub struct CustomSecretEncryptionAlgorithm {
 mod tests {
     use assert_matches2::assert_matches;
     use js_int::uint;
-    use ruma_common::{serde::Base64, KeyDerivationAlgorithm};
+    use ruma_common::{KeyDerivationAlgorithm, serde::Base64};
     use serde_json::{
         from_value as from_json_value, json, to_value as to_json_value,
         value::to_raw_value as to_raw_json_value,

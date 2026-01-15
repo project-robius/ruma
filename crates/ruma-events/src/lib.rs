@@ -106,8 +106,8 @@
 
 use std::{collections::BTreeSet, fmt};
 
-use ruma_common::{room_version_rules::RedactionRules, EventEncryptionAlgorithm, OwnedUserId};
-use serde::{de::IgnoredAny, Deserialize, Serialize, Serializer};
+use ruma_common::{EventEncryptionAlgorithm, OwnedUserId, room_version_rules::RedactionRules};
+use serde::{Deserialize, Serialize, Serializer, de::IgnoredAny};
 
 // Needs to be public for trybuild tests
 #[doc(hidden)]
@@ -162,6 +162,8 @@ pub mod ignored_user_list;
 pub mod image;
 #[cfg(feature = "unstable-msc2545")]
 pub mod image_pack;
+#[cfg(feature = "unstable-msc4380")]
+pub mod invite_permission_config;
 pub mod key;
 #[cfg(feature = "unstable-msc3488")]
 pub mod location;

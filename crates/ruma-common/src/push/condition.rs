@@ -11,9 +11,9 @@ use serde_json::value::Value as JsonValue;
 use wildmatch::WildMatch;
 
 use crate::{
+    EventId, OwnedRoomId, OwnedUserId, UserId,
     power_levels::{NotificationPowerLevels, NotificationPowerLevelsKey},
     room_version_rules::RoomPowerLevelsRules,
-    EventId, OwnedRoomId, OwnedUserId, UserId,
 };
 #[cfg(feature = "unstable-msc3931")]
 use crate::{PrivOwnedStr, RoomVersionId};
@@ -352,13 +352,17 @@ impl PushConditionRoomCtx {
     pub fn with_has_thread_subscription_fn(
         self,
         #[cfg(not(target_family = "wasm"))]
-        has_thread_subscription_fn: impl for<'a> Fn(&'a EventId) -> HasThreadSubscriptionFuture<'a>
-            + Send
-            + Sync
-            + 'static,
+        has_thread_subscription_fn: impl for<'a> Fn(
+            &'a EventId,
+        ) -> HasThreadSubscriptionFuture<'a>
+        + Send
+        + Sync
+        + 'static,
         #[cfg(target_family = "wasm")]
-        has_thread_subscription_fn: impl for<'a> Fn(&'a EventId) -> HasThreadSubscriptionFuture<'a>
-            + 'static,
+        has_thread_subscription_fn: impl for<'a> Fn(
+            &'a EventId,
+        ) -> HasThreadSubscriptionFuture<'a>
+        + 'static,
     ) -> Self {
         Self { has_thread_subscription_fn: Some(Arc::new(has_thread_subscription_fn)), ..self }
     }
@@ -618,7 +622,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use assert_matches2::assert_matches;
-    use js_int::{int, uint, Int};
+    use js_int::{Int, int, uint};
     use macro_rules_attribute::apply;
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
     use smol_macros::test;
@@ -628,10 +632,9 @@ mod tests {
         RoomMemberCountIs, StrExt,
     };
     use crate::{
-        owned_room_id, owned_user_id,
+        OwnedUserId, owned_room_id, owned_user_id,
         power_levels::{NotificationPowerLevels, NotificationPowerLevelsKey},
         room_version_rules::{AuthorizationRules, RoomPowerLevelsRules},
-        OwnedUserId,
     };
 
     #[test]
@@ -765,7 +768,7 @@ mod tests {
         assert!(!"m".matches_word("[[:alpha:]]?"));
         assert!("[[:alpha:]]!".matches_word("[[:alpha:]]?"));
 
-        // From the spec: <https://spec.matrix.org/v1.16/client-server-api/#conditions-1>
+        // From the spec: <https://spec.matrix.org/v1.17/client-server-api/#conditions-1>
         assert!("An example event.".matches_word("ex*ple"));
         assert!("exple".matches_word("ex*ple"));
         assert!("An exciting triple-whammy".matches_word("ex*ple"));
@@ -814,7 +817,7 @@ mod tests {
         assert!("".matches_pattern("*", false));
         assert!(!"foo".matches_pattern("", false));
 
-        // From the spec: <https://spec.matrix.org/v1.16/client-server-api/#conditions-1>
+        // From the spec: <https://spec.matrix.org/v1.17/client-server-api/#conditions-1>
         assert!("Lunch plans".matches_pattern("lunc?*", false));
         assert!("LUNCH".matches_pattern("lunc?*", false));
         assert!(!" lunch".matches_pattern("lunc?*", false));
@@ -1115,7 +1118,7 @@ mod tests {
     #[cfg(feature = "unstable-msc4306")]
     #[apply(test!)]
     async fn thread_subscriptions_match() {
-        use crate::{event_id, EventId};
+        use crate::{EventId, event_id};
 
         let context = push_context().with_has_thread_subscription_fn(|event_id: &EventId| {
             Box::pin(async move {

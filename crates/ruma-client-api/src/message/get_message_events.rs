@@ -7,12 +7,12 @@ pub mod v3 {
     //!
     //! [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidmessages
 
-    use js_int::{uint, UInt};
+    use js_int::{UInt, uint};
     use ruma_common::{
-        api::{auth_scheme::AccessToken, request, response, Direction},
+        OwnedRoomId,
+        api::{Direction, auth_scheme::AccessToken, request, response},
         metadata,
         serde::Raw,
-        OwnedRoomId,
     };
     use ruma_events::{AnyStateEvent, AnyTimelineEvent};
 
@@ -165,6 +165,7 @@ pub mod v3 {
         uint!(10)
     }
 
+    #[cfg(feature = "client")]
     #[allow(clippy::trivially_copy_pass_by_ref)]
     fn is_default_limit(val: &UInt) -> bool {
         *val == default_limit()
@@ -177,8 +178,8 @@ pub mod v3 {
         use js_int::uint;
         use ruma_common::{
             api::{
-                auth_scheme::SendAccessToken, Direction, MatrixVersion, OutgoingRequest,
-                SupportedVersions,
+                Direction, MatrixVersion, OutgoingRequest, SupportedVersions,
+                auth_scheme::SendAccessToken,
             },
             owned_room_id,
         };

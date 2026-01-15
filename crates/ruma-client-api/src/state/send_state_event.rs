@@ -10,10 +10,10 @@ pub mod v3 {
     use std::borrow::Borrow;
 
     use ruma_common::{
-        api::{auth_scheme::AccessToken, response, Metadata},
+        MilliSecondsSinceUnixEpoch, OwnedEventId, OwnedRoomId,
+        api::{auth_scheme::AccessToken, response},
         metadata,
         serde::Raw,
-        MilliSecondsSinceUnixEpoch, OwnedEventId, OwnedRoomId,
     };
     use ruma_events::{AnyStateEventContent, StateEventContent, StateEventType};
     use serde_json::value::to_raw_value as to_raw_json_value;
@@ -117,7 +117,7 @@ pub mod v3 {
             access_token: ruma_common::api::auth_scheme::SendAccessToken<'_>,
             considering: std::borrow::Cow<'_, ruma_common::api::SupportedVersions>,
         ) -> Result<http::Request<T>, ruma_common::api::error::IntoHttpError> {
-            use ruma_common::api::auth_scheme::AuthScheme;
+            use ruma_common::api::{Metadata, auth_scheme::AuthScheme};
 
             let query_string =
                 serde_html_form::to_string(RequestQuery { timestamp: self.timestamp })?;
@@ -204,12 +204,12 @@ pub mod v3 {
 
         use ruma_common::{
             api::{
-                auth_scheme::SendAccessToken, MatrixVersion, OutgoingRequest as _,
-                SupportedVersions,
+                MatrixVersion, OutgoingRequest as _, SupportedVersions,
+                auth_scheme::SendAccessToken,
             },
             owned_room_id,
         };
-        use ruma_events::{room::name::RoomNameEventContent, EmptyStateKey};
+        use ruma_events::{EmptyStateKey, room::name::RoomNameEventContent};
 
         let supported = SupportedVersions {
             versions: [MatrixVersion::V1_1].into(),

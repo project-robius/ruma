@@ -163,6 +163,7 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
         let extra = Extra(extra);
 
         Ok(match errcode {
+            ErrorCode::AppserviceLoginUnsupported => ErrorKind::AppserviceLoginUnsupported,
             ErrorCode::BadAlias => ErrorKind::BadAlias,
             ErrorCode::BadJson => ErrorKind::BadJson,
             ErrorCode::BadState => ErrorKind::BadState,
@@ -198,6 +199,8 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
             ErrorCode::InvalidParam => ErrorKind::InvalidParam,
             ErrorCode::InvalidRoomState => ErrorKind::InvalidRoomState,
             ErrorCode::InvalidUsername => ErrorKind::InvalidUsername,
+            #[cfg(feature = "unstable-msc4380")]
+            ErrorCode::InviteBlocked => ErrorKind::InviteBlocked,
             ErrorCode::LimitExceeded => ErrorKind::LimitExceeded {
                 retry_after: retry_after_ms
                     .map(from_json_value::<UInt>)

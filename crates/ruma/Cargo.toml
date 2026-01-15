@@ -7,8 +7,8 @@ homepage = "https://ruma.dev/"
 repository = "https://github.com/ruma/ruma"
 readme = "README.md"
 license = "MIT"
-version = "0.13.0"
-edition = "2021"
+version = "0.14.1"
+edition = "2024"
 rust-version = { workspace = true }
 
 [package.metadata.docs.rs]
@@ -156,6 +156,7 @@ unstable-msc2870 = ["ruma-common/unstable-msc2870"]
 unstable-msc2967 = ["ruma-client-api?/unstable-msc2967"]
 unstable-msc3061 = ["ruma-events?/unstable-msc3061"]
 unstable-msc3202 = ["ruma-appservice-api?/unstable-msc3202"]
+unstable-msc3230 = ["ruma-events?/unstable-msc3230"]
 unstable-msc3245 = ["ruma-events?/unstable-msc3245"]
 # Support the m.room.message fallback fields from the first version of MSC3245,
 # implemented in Element Web and documented at
@@ -164,7 +165,6 @@ unstable-msc3245-v1-compat = ["ruma-events?/unstable-msc3245-v1-compat"]
 unstable-msc3246 = ["ruma-events?/unstable-msc3246"]
 unstable-msc3381 = ["ruma-events?/unstable-msc3381"]
 unstable-msc3401 = ["ruma-events?/unstable-msc3401"]
-unstable-msc3414 = ["ruma-events?/unstable-msc3414"]
 unstable-msc3488 = ["ruma-client-api?/unstable-msc3488", "ruma-events?/unstable-msc3488"]
 unstable-msc3489 = ["ruma-events?/unstable-msc3489"]
 unstable-msc3551 = ["ruma-events?/unstable-msc3551"]
@@ -195,6 +195,7 @@ unstable-msc4143 = ["ruma-client-api?/unstable-msc4143"]
 unstable-msc4171 = ["ruma-events?/unstable-msc4171"]
 unstable-msc4186 = ["ruma-common/unstable-msc4186", "ruma-client-api?/unstable-msc4186"]
 unstable-msc4191 = ["ruma-client-api?/unstable-msc4191"]
+unstable-msc4195 = ["unstable-msc4143", "ruma-client-api?/unstable-msc4195"]
 unstable-msc4203 = ["ruma-appservice-api?/unstable-msc4203"]
 unstable-msc4230 = ["ruma-events?/unstable-msc4230"]
 unstable-msc4268 = ["ruma-events?/unstable-msc4268"]
@@ -204,11 +205,16 @@ unstable-msc4286 = ["ruma-html?/unstable-msc4286"]
 # Thread subscription support.
 unstable-msc4306 = ["ruma-common/unstable-msc4306", "ruma-client-api?/unstable-msc4306"]
 unstable-msc4308 = ["ruma-client-api?/unstable-msc4308"]
-unstable-msc4319 = ["ruma-events?/unstable-msc4319"]
 unstable-msc4310 = ["ruma-events?/unstable-msc4310"]
+unstable-msc4319 = ["ruma-events?/unstable-msc4319"]
 unstable-msc4334 = ["ruma-events?/unstable-msc4334", "dep:language-tags"]
 unstable-msc4359 = ["ruma-events?/unstable-msc4359"]
-unstable-msc3230 = ["ruma-events?/unstable-msc3230"]
+unstable-msc4362 = ["ruma-events?/unstable-msc4362"]
+unstable-msc4380 = [
+    "ruma-common/unstable-msc4380",
+    "ruma-events?/unstable-msc4380",
+    "ruma-client-api?/unstable-msc4380",
+]
 
 [dependencies]
 assign = { workspace = true }

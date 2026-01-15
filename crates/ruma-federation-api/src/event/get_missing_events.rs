@@ -7,10 +7,11 @@ pub mod v1 {
     //!
     //! [spec]: https://spec.matrix.org/latest/server-server-api/#post_matrixfederationv1get_missing_eventsroomid
 
-    use js_int::{uint, UInt};
+    use js_int::{UInt, uint};
     use ruma_common::{
+        OwnedEventId, OwnedRoomId,
         api::{request, response},
-        metadata, OwnedEventId, OwnedRoomId,
+        metadata,
     };
     use serde_json::value::RawValue as RawJsonValue;
 
@@ -87,6 +88,7 @@ pub mod v1 {
         uint!(10)
     }
 
+    #[cfg(feature = "client")]
     fn is_default_limit(val: &UInt) -> bool {
         *val == default_limit()
     }

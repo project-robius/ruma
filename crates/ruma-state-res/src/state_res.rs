@@ -7,12 +7,12 @@ use std::{
 };
 
 use ruma_common::{
-    room_version_rules::{AuthorizationRules, StateResolutionV2Rules},
     EventId, MilliSecondsSinceUnixEpoch, OwnedUserId,
+    room_version_rules::{AuthorizationRules, StateResolutionV2Rules},
 };
 use ruma_events::{
-    room::{member::MembershipState, power_levels::UserPowerLevel},
     StateEventType, TimelineEventType,
+    room::{member::MembershipState, power_levels::UserPowerLevel},
 };
 use tracing::{debug, info, instrument, trace, warn};
 
@@ -20,13 +20,12 @@ use tracing::{debug, info, instrument, trace, warn};
 mod tests;
 
 use crate::{
-    auth_types_for_event, check_state_dependent_auth_rules,
+    Error, Event, Result, auth_types_for_event, check_state_dependent_auth_rules,
     events::{
-        power_levels::RoomPowerLevelsEventOptionExt, RoomCreateEvent, RoomMemberEvent,
-        RoomPowerLevelsEvent, RoomPowerLevelsIntField,
+        RoomCreateEvent, RoomMemberEvent, RoomPowerLevelsEvent, RoomPowerLevelsIntField,
+        power_levels::RoomPowerLevelsEventOptionExt,
     },
     utils::RoomIdExt,
-    Error, Event, Result,
 };
 
 /// A mapping of event type and state_key to some value `T`, usually an `EventId`.
@@ -517,14 +516,15 @@ fn power_level_for_sender<E: Event>(
     let mut room_create_event = None;
     let mut room_power_levels_event = None;
 
-    if let Some(event) = &event {
-        if rules.room_create_event_id_as_room_id && creators_lock.get().is_none() {
-            // The m.room.create event is not in the auth events, we can get its ID via the room ID.
-            room_create_event = event
-                .room_id()
-                .and_then(|room_id| room_id.room_create_event_id().ok())
-                .and_then(|room_create_event_id| fetch_event(&room_create_event_id));
-        }
+    if let Some(event) = &event
+        && rules.room_create_event_id_as_room_id
+        && creators_lock.get().is_none()
+    {
+        // The m.room.create event is not in the auth events, we can get its ID via the room ID.
+        room_create_event = event
+            .room_id()
+            .and_then(|room_id| room_id.room_create_event_id().ok())
+            .and_then(|room_create_event_id| fetch_event(&room_create_event_id));
     }
 
     for auth_event_id in event.as_ref().map(|pdu| pdu.auth_events()).into_iter().flatten() {
@@ -761,17 +761,17 @@ fn mainline_sort<E: Event>(
 
     let mut order_map = HashMap::new();
     for event_id in events.iter() {
-        if let Some(event) = fetch_event(event_id.borrow()) {
-            if let Ok(position) = mainline_position(event, &mainline_map, &fetch_event) {
-                order_map.insert(
+        if let Some(event) = fetch_event(event_id.borrow())
+            && let Ok(position) = mainline_position(event, &mainline_map, &fetch_event)
+        {
+            order_map.insert(
+                event_id,
+                (
+                    position,
+                    fetch_event(event_id.borrow()).map(|event| event.origin_server_ts()),
                     event_id,
-                    (
-                        position,
-                        fetch_event(event_id.borrow()).map(|event| event.origin_server_ts()),
-                        event_id,
-                    ),
-                );
-            }
+                ),
+            );
         }
 
         // TODO: if these functions are ever made async here

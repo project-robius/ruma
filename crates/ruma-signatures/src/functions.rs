@@ -6,24 +6,24 @@ use std::{
     mem,
 };
 
-use base64::{alphabet, Engine};
+use base64::{Engine, alphabet};
 use ruma_common::{
-    canonical_json::{redact, JsonType},
-    room_version_rules::{EventIdFormatVersion, RedactionRules, RoomVersionRules, SignaturesRules},
-    serde::{base64::Standard, Base64},
     AnyKeyName, CanonicalJsonObject, CanonicalJsonValue, OwnedEventId, OwnedServerName,
     SigningKeyAlgorithm, SigningKeyId, UserId,
+    canonical_json::{JsonType, redact},
+    room_version_rules::{EventIdFormatVersion, RedactionRules, RoomVersionRules, SignaturesRules},
+    serde::{Base64, base64::Standard},
 };
 use serde_json::to_string as to_json_string;
-use sha2::{digest::Digest, Sha256};
+use sha2::{Sha256, digest::Digest};
 
 #[cfg(test)]
 mod tests;
 
 use crate::{
-    keys::{KeyPair, PublicKeyMap},
-    verification::{verifier_from_algorithm, Verified, Verifier},
     Error, JsonError, ParseError, VerificationError,
+    keys::{KeyPair, PublicKeyMap},
+    verification::{Verified, Verifier, verifier_from_algorithm},
 };
 
 /// The [maximum size allowed] for a PDU.
@@ -686,10 +686,10 @@ pub fn verify_event(
 
     let calculated_hash = content_hash(object)?;
 
-    if let Ok(hash) = Base64::<Standard>::parse(hash) {
-        if hash.as_bytes() == calculated_hash.as_bytes() {
-            return Ok(Verified::All);
-        }
+    if let Ok(hash) = Base64::<Standard>::parse(hash)
+        && hash.as_bytes() == calculated_hash.as_bytes()
+    {
+        return Ok(Verified::All);
     }
 
     Ok(Verified::Signatures)
@@ -761,20 +761,19 @@ fn servers_to_check_signatures(
         }
     }
 
-    if rules.check_join_authorised_via_users_server {
-        if let Some(authorized_user) = object
+    if rules.check_join_authorised_via_users_server
+        && let Some(authorized_user) = object
             .get("content")
             .and_then(|c| c.as_object())
             .and_then(|c| c.get("join_authorised_via_users_server"))
-        {
-            let authorized_user = authorized_user.as_str().ok_or_else(|| {
-                JsonError::not_of_type("join_authorised_via_users_server", JsonType::String)
-            })?;
-            let authorized_user = <&UserId>::try_from(authorized_user)
-                .map_err(|e| Error::from(ParseError::UserId(e)))?;
+    {
+        let authorized_user = authorized_user.as_str().ok_or_else(|| {
+            JsonError::not_of_type("join_authorised_via_users_server", JsonType::String)
+        })?;
+        let authorized_user =
+            <&UserId>::try_from(authorized_user).map_err(|e| Error::from(ParseError::UserId(e)))?;
 
-            servers_to_check.insert(authorized_user.server_name().to_owned());
-        }
+        servers_to_check.insert(authorized_user.server_name().to_owned());
     }
 
     Ok(servers_to_check)

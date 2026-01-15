@@ -75,7 +75,7 @@ use bytes::BufMut;
 ///
 /// ```
 /// pub mod do_a_thing {
-///     use ruma_common::{api::request, OwnedRoomId};
+///     use ruma_common::{OwnedRoomId, api::request};
 ///     # use ruma_common::{api::{auth_scheme::NoAuthentication, response}, metadata};
 ///
 ///     // metadata! { ... };
@@ -190,7 +190,7 @@ pub use ruma_macros::request;
 ///
 /// ```
 /// pub mod do_a_thing {
-///     use ruma_common::{api::response, OwnedRoomId};
+///     use ruma_common::{OwnedRoomId, api::response};
 ///     # use ruma_common::{api::{auth_scheme::NoAuthentication, request}, metadata};
 ///
 ///     // metadata! { ... };
@@ -270,15 +270,22 @@ pub trait OutgoingRequest: Metadata + Clone {
 
     /// Tries to convert this request into an `http::Request`.
     ///
-    /// On endpoints with authentication, when adequate information isn't provided through
-    /// `authentication_input`, this could result in an error. It may also fail with a serialization
-    /// error in case of bugs in Ruma though.
-    ///
-    /// It may also fail if the `PathData::make_endpoint_url()` implementation returns an error.
-    ///
     /// The endpoints path will be appended to the given `base_url`, for example
     /// `https://matrix.org`. Since all paths begin with a slash, it is not necessary for the
     /// `base_url` to have a trailing slash. If it has one however, it will be ignored.
+    ///
+    /// ## Errors
+    ///
+    /// This method can return an error in the following cases:
+    ///
+    /// * On endpoints that require authentication, when adequate information isn't provided through
+    ///   `authentication_input`, i.e. when [`AuthScheme::add_authentication()`] returns an error.
+    /// * On endpoints that have several versions for the path, when there are no supported versions
+    ///   for the endpoint, i.e. when [`PathBuilder::make_endpoint_url()`] returns an error.
+    /// * If the request serialization fails, which should only happen in case of bugs in Ruma.
+    ///
+    /// [`AuthScheme::add_authentication()`]: auth_scheme::AuthScheme::add_authentication
+    /// [`PathBuilder::make_endpoint_url()`]: path_builder::PathBuilder::make_endpoint_url
     fn try_into_http_request<T: Default + BufMut + AsRef<[u8]>>(
         self,
         base_url: &str,
@@ -320,25 +327,7 @@ where
         let mut http_request =
             self.try_into_http_request(base_url, access_token, path_builder_input)?;
 
-        if !identity.is_empty() {
-            let identity_query = serde_html_form::to_string(identity)?;
-
-            let uri = http_request.uri().to_owned();
-            let mut parts = uri.into_parts();
-
-            let path_and_query_with_user_id = match &parts.path_and_query {
-                Some(path_and_query) => match path_and_query.query() {
-                    Some(_) => format!("{path_and_query}&{identity_query}"),
-                    None => format!("{path_and_query}?{identity_query}"),
-                },
-                None => format!("/?{identity_query}"),
-            };
-
-            parts.path_and_query =
-                Some(path_and_query_with_user_id.try_into().map_err(http::Error::from)?);
-
-            *http_request.uri_mut() = parts.try_into().map_err(http::Error::from)?;
-        }
+        identity.maybe_add_to_uri(http_request.uri_mut())?;
 
         Ok(http_request)
     }
@@ -447,5 +436,34 @@ impl<'a> AppserviceUserIdentity<'a> {
     /// Whether this identity is empty.
     fn is_empty(&self) -> bool {
         self.user_id.is_none() && self.device_id.is_none()
+    }
+
+    /// Add this identity to the given URI, if the identity is not empty.
+    pub fn maybe_add_to_uri(&self, uri: &mut http::Uri) -> Result<(), IntoHttpError> {
+        if self.is_empty() {
+            // There will be no change to the URI.
+            return Ok(());
+        }
+
+        // Serialize the query arguments of the identity.
+        let identity_query = serde_html_form::to_string(self)?;
+
+        // Add the query arguments to the URI.
+        let mut parts = uri.clone().into_parts();
+
+        let path_and_query_with_user_id = match &parts.path_and_query {
+            Some(path_and_query) => match path_and_query.query() {
+                Some(_) => format!("{path_and_query}&{identity_query}"),
+                None => format!("{path_and_query}?{identity_query}"),
+            },
+            None => format!("/?{identity_query}"),
+        };
+
+        parts.path_and_query =
+            Some(path_and_query_with_user_id.try_into().map_err(http::Error::from)?);
+
+        *uri = parts.try_into().map_err(http::Error::from)?;
+
+        Ok(())
     }
 }

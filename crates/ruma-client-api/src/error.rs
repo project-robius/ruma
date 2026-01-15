@@ -5,23 +5,23 @@ use std::{collections::BTreeMap, fmt, str::FromStr, sync::Arc};
 use as_variant::as_variant;
 use bytes::{BufMut, Bytes};
 use ruma_common::{
+    RoomVersionId,
     api::{
+        EndpointError, OutgoingResponse,
         error::{
             FromHttpResponseError, HeaderDeserializationError, HeaderSerializationError,
             IntoHttpError, MatrixErrorBody,
         },
-        EndpointError, OutgoingResponse,
     },
     serde::StringEnum,
-    RoomVersionId,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{from_slice as from_json_slice, Value as JsonValue};
+use serde_json::{Value as JsonValue, from_slice as from_json_slice};
 use web_time::{Duration, SystemTime};
 
 use crate::{
-    http_headers::{http_date_to_system_time, system_time_to_http_date},
     PrivOwnedStr,
+    http_headers::{http_date_to_system_time, system_time_to_http_date},
 };
 
 /// Deserialize and Serialize implementations for ErrorKind.
@@ -35,6 +35,17 @@ mod kind_serde;
 #[non_exhaustive]
 // Please keep the variants sorted alphabetically.
 pub enum ErrorKind {
+    /// `M_APPSERVICE_LOGIN_UNSUPPORTED`
+    ///
+    /// An application service used the [`m.login.application_service`] type an endpoint from the
+    /// [legacy authentication API] in a way that is not supported by the homeserver, because the
+    /// server only supports the [OAuth 2.0 API].
+    ///
+    /// [`m.login.application_service`]: https://spec.matrix.org/latest/application-service-api/#server-admin-style-permissions
+    /// [legacy authentication API]: https://spec.matrix.org/latest/client-server-api/#legacy-api
+    /// [OAuth 2.0 API]: https://spec.matrix.org/latest/client-server-api/#oauth-20-api
+    AppserviceLoginUnsupported,
+
     /// `M_BAD_ALIAS`
     ///
     /// One or more [room aliases] within the `m.room.canonical_alias` event do not point to the
@@ -165,6 +176,13 @@ pub enum ErrorKind {
     ///
     /// The desired user name is not valid.
     InvalidUsername,
+
+    /// `M_INVITE_BLOCKED`
+    ///
+    /// The invite was interdicted by moderation tools or configured access controls without having
+    /// been witnessed by the invitee.
+    #[cfg(feature = "unstable-msc4380")]
+    InviteBlocked,
 
     /// `M_LIMIT_EXCEEDED`
     ///
@@ -426,6 +444,7 @@ impl ErrorKind {
     /// Get the [`ErrorCode`] for this `ErrorKind`.
     pub fn errcode(&self) -> ErrorCode {
         match self {
+            ErrorKind::AppserviceLoginUnsupported => ErrorCode::AppserviceLoginUnsupported,
             ErrorKind::BadAlias => ErrorCode::BadAlias,
             ErrorKind::BadJson => ErrorCode::BadJson,
             ErrorKind::BadState => ErrorCode::BadState,
@@ -446,6 +465,8 @@ impl ErrorKind {
             ErrorKind::InvalidParam => ErrorCode::InvalidParam,
             ErrorKind::InvalidRoomState => ErrorCode::InvalidRoomState,
             ErrorKind::InvalidUsername => ErrorCode::InvalidUsername,
+            #[cfg(feature = "unstable-msc4380")]
+            ErrorKind::InviteBlocked => ErrorCode::InviteBlocked,
             ErrorKind::LimitExceeded { .. } => ErrorCode::LimitExceeded,
             ErrorKind::MissingParam => ErrorCode::MissingParam,
             ErrorKind::MissingToken => ErrorCode::MissingToken,
@@ -495,9 +516,20 @@ pub struct Extra(BTreeMap<String, JsonValue>);
 /// [error codes]: https://spec.matrix.org/latest/client-server-api/#standard-error-response
 #[derive(Clone, StringEnum)]
 #[non_exhaustive]
-#[ruma_enum(rename_all = "M_MATRIX_ERROR_CASE")]
+#[ruma_enum(rename_all(prefix = "M_", rule = "SCREAMING_SNAKE_CASE"))]
 // Please keep the variants sorted alphabetically.
 pub enum ErrorCode {
+    /// `M_APPSERVICE_LOGIN_UNSUPPORTED`
+    ///
+    /// An application service used the [`m.login.application_service`] type an endpoint from the
+    /// [legacy authentication API] in a way that is not supported by the homeserver, because the
+    /// server only supports the [OAuth 2.0 API].
+    ///
+    /// [`m.login.application_service`]: https://spec.matrix.org/latest/application-service-api/#server-admin-style-permissions
+    /// [legacy authentication API]: https://spec.matrix.org/latest/client-server-api/#legacy-api
+    /// [OAuth 2.0 API]: https://spec.matrix.org/latest/client-server-api/#oauth-20-api
+    AppserviceLoginUnsupported,
+
     /// `M_BAD_ALIAS`
     ///
     /// One or more [room aliases] within the `m.room.canonical_alias` event do not point to the
@@ -615,6 +647,16 @@ pub enum ErrorCode {
     ///
     /// The desired user name is not valid.
     InvalidUsername,
+
+    /// `M_INVITE_BLOCKED`
+    ///
+    /// The invite was interdicted by moderation tools or configured access controls without having
+    /// been witnessed by the invitee.
+    ///
+    /// Unstable prefix intentionally shared with MSC4155 for compatibility.
+    #[cfg(feature = "unstable-msc4380")]
+    #[ruma_enum(rename = "ORG.MATRIX.MSC4155.INVITE_BLOCKED")]
+    InviteBlocked,
 
     /// `M_LIMIT_EXCEEDED`
     ///
@@ -1163,7 +1205,7 @@ mod tests {
     use assert_matches2::assert_matches;
     use ruma_common::api::{EndpointError, OutgoingResponse};
     use serde_json::{
-        from_slice as from_json_slice, from_value as from_json_value, json, Value as JsonValue,
+        Value as JsonValue, from_slice as from_json_slice, from_value as from_json_value, json,
     };
     use web_time::{Duration, UNIX_EPOCH};
 

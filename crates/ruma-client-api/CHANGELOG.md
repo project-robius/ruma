@@ -1,5 +1,22 @@
 # [unreleased]
 
+# 0.22.1
+
+Improvements:
+
+- Add `uiaa::LoginTermsParams`, that allows to construct or extract the
+  parameters of the `m.login.terms` authentication type.
+- Add `UiaaInfo::params()` as a helper to extract UIAA authentication type
+  parameters.
+- Add support for the `m.oauth` UIAA authentication type according to MSC4312 /
+  Matrix 1.17.
+- Add unstable support for RTC transports discovery endpoint from MSC4143, with
+  support for the LiveKit transport from MSC4195.
+- Add `Error(Code/Kind)::AppserviceLoginUnsupported` according to MSC4910 /
+  Matrix 1.17.
+
+# 0.22.0
+
 Breaking changes:
 
 - Upgrade `js_option` to v0.2.0
@@ -13,6 +30,9 @@ Breaking changes:
 - Make the `ErrorBody::Standard` variant a newtype around `StandardErrorBody`.
 - `StandardErrorBody` is non-exhaustive. Allowing to add fields in the future
   without it being a breaking change.
+- The `room_id` field of `listen_to_new_events::v3::Request` is required due to
+  a clarification in the specification. The struct doesn't implement `Default`
+  anymore.
 
 Fixes:
 
@@ -21,6 +41,10 @@ Fixes:
 
 Improvements:
 
+- Add `M_INVITE_BLOCKED` candidate error code proposed by
+  [MSC4380](https://github.com/matrix-org/matrix-spec-proposals/pull/4380)
+  sharing an unstable prefix with the preceding
+  [MSC4155](https://github.com/matrix-org/matrix-spec-proposals/pull/4155).
 - Stabilize support for the `use_state_after` query parameter and `State::After`
   response property to `sync_events::v3`, according to Matrix 1.16.
 - Stabilize support for extended profiles according to Matrix 1.16.

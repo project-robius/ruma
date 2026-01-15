@@ -7,11 +7,12 @@ pub mod v3 {
     //!
     //! [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3profileuserid
 
-    use std::collections::{btree_map, BTreeMap};
+    use std::collections::{BTreeMap, btree_map};
 
     use ruma_common::{
+        OwnedUserId,
         api::{auth_scheme::NoAuthentication, request, response},
-        metadata, OwnedUserId,
+        metadata,
     };
     use serde_json::Value as JsonValue;
 
@@ -134,17 +135,15 @@ pub mod v3 {
 
 #[cfg(test)]
 mod tests {
-    use ruma_common::owned_mxc_uri;
-    use serde_json::{
-        from_slice as from_json_slice, json, to_vec as to_json_vec, Value as JsonValue,
-    };
+    use serde_json::json;
 
     use super::v3::Response;
 
     #[test]
     #[cfg(feature = "server")]
     fn serialize_response() {
-        use ruma_common::api::OutgoingResponse;
+        use ruma_common::{api::OutgoingResponse, owned_mxc_uri};
+        use serde_json::{Value as JsonValue, from_slice as from_json_slice};
 
         use crate::profile::ProfileFieldValue;
 
@@ -172,6 +171,7 @@ mod tests {
     #[cfg(feature = "client")]
     fn deserialize_response() {
         use ruma_common::api::IncomingResponse;
+        use serde_json::to_vec as to_json_vec;
 
         use crate::profile::{AvatarUrl, DisplayName};
 

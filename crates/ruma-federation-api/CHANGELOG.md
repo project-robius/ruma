@@ -1,5 +1,13 @@
 # [unreleased]
 
+# 0.13.1
+
+Bug fixes:
+
+- Fix code that was not properly gated behind `client` or `server` features.
+
+# 0.13.0
+
 Breaking changes:
 
 - All the endpoints use a `SinglePath` rather than a `VersionHistory` as
