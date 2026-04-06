@@ -5,14 +5,14 @@
 pub mod v3 {
     //! `/v3/` ([spec])
     //!
-    //! [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3downloadservernamemediaidfilename
+    //! [spec]: https://spec.matrix.org/v1.18/client-server-api/#get_matrixmediav3downloadservernamemediaidfilename
 
     use std::time::Duration;
 
     use http::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
     use ruma_common::{
         IdParseError, MxcUri, OwnedServerName,
-        api::{auth_scheme::NoAuthentication, request, response},
+        api::{auth_scheme::NoAccessToken, request, response},
         http_headers::ContentDisposition,
         metadata,
     };
@@ -22,7 +22,7 @@ pub mod v3 {
     metadata! {
         method: GET,
         rate_limited: false,
-        authentication: NoAuthentication,
+        authentication: NoAccessToken,
         history: {
             1.0 => "/_matrix/media/r0/download/{server_name}/{media_id}/{filename}",
             1.1 => "/_matrix/media/v3/download/{server_name}/{media_id}/{filename}",

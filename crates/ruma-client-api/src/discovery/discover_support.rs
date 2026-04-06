@@ -1,12 +1,12 @@
 //! `GET /.well-known/matrix/support` ([spec])
 //!
-//! [spec]: https://spec.matrix.org/latest/client-server-api/#getwell-knownmatrixsupport
+//! [spec]: https://spec.matrix.org/v1.18/client-server-api/#getwell-knownmatrixsupport
 //!
 //! Get server admin contact and support page of a homeserver's domain.
 
 use ruma_common::{
     OwnedUserId,
-    api::{auth_scheme::NoAuthentication, request, response},
+    api::{auth_scheme::NoAccessToken, request, response},
     metadata,
     serde::StringEnum,
 };
@@ -17,7 +17,7 @@ use crate::PrivOwnedStr;
 metadata! {
     method: GET,
     rate_limited: false,
-    authentication: NoAuthentication,
+    authentication: NoAccessToken,
     path: "/.well-known/matrix/support",
 }
 

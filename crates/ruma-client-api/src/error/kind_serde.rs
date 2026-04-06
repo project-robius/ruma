@@ -1,18 +1,19 @@
-use std::{
-    borrow::Cow,
-    collections::btree_map::{BTreeMap, Entry},
-    fmt,
-    time::Duration,
-};
+use std::{borrow::Cow, fmt, time::Duration};
 
 use js_int::UInt;
+use ruma_common::serde::JsonObject;
 use serde::{
     de::{self, Deserialize, Deserializer, MapAccess, Visitor},
     ser::{self, Serialize, SerializeMap, Serializer},
 };
-use serde_json::from_value as from_json_value;
+use serde_json::{from_value as from_json_value, map::Entry};
 
-use super::{ErrorCode, ErrorKind, Extra, RetryAfter};
+use super::{
+    BadStatusErrorData, CustomErrorKind, ErrorCode, ErrorKind, IncompatibleRoomVersionErrorData,
+    LimitExceededErrorData, ResourceLimitExceededErrorData, RetryAfter, UnknownTokenErrorData,
+    WrongRoomKeysVersionErrorData,
+};
+use crate::error::UserLimitExceededErrorData;
 
 enum Field<'de> {
     ErrorCode,
@@ -23,6 +24,8 @@ enum Field<'de> {
     Status,
     Body,
     CurrentVersion,
+    InfoUri,
+    CanUpgrade,
     Other(Cow<'de, str>),
 }
 
@@ -37,6 +40,8 @@ impl<'de> Field<'de> {
             "status" => Self::Status,
             "body" => Self::Body,
             "current_version" => Self::CurrentVersion,
+            "info_uri" => Self::InfoUri,
+            "can_upgrade" => Self::CanUpgrade,
             _ => Self::Other(s),
         }
     }
@@ -103,7 +108,9 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
         let mut status = None;
         let mut body = None;
         let mut current_version = None;
-        let mut extra = BTreeMap::new();
+        let mut info_uri = None;
+        let mut can_upgrade = None;
+        let mut data = JsonObject::new();
 
         macro_rules! set_field {
             (errcode) => {
@@ -128,6 +135,8 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
             (@variant_containing status) => { ErrorCode::BadStatus };
             (@variant_containing body) => { ErrorCode::BadStatus };
             (@variant_containing current_version) => { ErrorCode::WrongRoomKeysVersion };
+            (@variant_containing info_uri) => { ErrorCode::UserLimitExceeded };
+            (@variant_containing can_upgrade) => { ErrorCode::UserLimitExceeded };
             (@inner $field:ident) => {
                 {
                     if $field.is_some() {
@@ -148,7 +157,9 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
                 Field::Status => set_field!(status),
                 Field::Body => set_field!(body),
                 Field::CurrentVersion => set_field!(current_version),
-                Field::Other(other) => match extra.entry(other.into_owned()) {
+                Field::InfoUri => set_field!(info_uri),
+                Field::CanUpgrade => set_field!(can_upgrade),
+                Field::Other(other) => match data.entry(other.into_owned()) {
                     Entry::Vacant(v) => {
                         v.insert(map.next_value()?);
                     }
@@ -160,14 +171,13 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
         }
 
         let errcode = errcode.ok_or_else(|| de::Error::missing_field("errcode"))?;
-        let extra = Extra(extra);
 
         Ok(match errcode {
             ErrorCode::AppserviceLoginUnsupported => ErrorKind::AppserviceLoginUnsupported,
             ErrorCode::BadAlias => ErrorKind::BadAlias,
             ErrorCode::BadJson => ErrorKind::BadJson,
             ErrorCode::BadState => ErrorKind::BadState,
-            ErrorCode::BadStatus => ErrorKind::BadStatus {
+            ErrorCode::BadStatus => ErrorKind::BadStatus(BadStatusErrorData {
                 status: status
                     .map(|s| {
                         from_json_value::<u16>(s)
@@ -177,7 +187,7 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
                     })
                     .transpose()?,
                 body: body.map(from_json_value).transpose().map_err(de::Error::custom)?,
-            },
+            }),
             ErrorCode::CannotLeaveServerNoticeRoom => ErrorKind::CannotLeaveServerNoticeRoom,
             ErrorCode::CannotOverwriteMedia => ErrorKind::CannotOverwriteMedia,
             ErrorCode::CaptchaInvalid => ErrorKind::CaptchaInvalid,
@@ -188,20 +198,21 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
             ErrorCode::ConnectionTimeout => ErrorKind::ConnectionTimeout,
             ErrorCode::DuplicateAnnotation => ErrorKind::DuplicateAnnotation,
             ErrorCode::Exclusive => ErrorKind::Exclusive,
-            ErrorCode::Forbidden => ErrorKind::forbidden(),
+            ErrorCode::Forbidden => ErrorKind::Forbidden,
             ErrorCode::GuestAccessForbidden => ErrorKind::GuestAccessForbidden,
-            ErrorCode::IncompatibleRoomVersion => ErrorKind::IncompatibleRoomVersion {
-                room_version: from_json_value(
-                    room_version.ok_or_else(|| de::Error::missing_field("room_version"))?,
-                )
-                .map_err(de::Error::custom)?,
-            },
+            ErrorCode::IncompatibleRoomVersion => {
+                ErrorKind::IncompatibleRoomVersion(IncompatibleRoomVersionErrorData {
+                    room_version: from_json_value(
+                        room_version.ok_or_else(|| de::Error::missing_field("room_version"))?,
+                    )
+                    .map_err(de::Error::custom)?,
+                })
+            }
             ErrorCode::InvalidParam => ErrorKind::InvalidParam,
             ErrorCode::InvalidRoomState => ErrorKind::InvalidRoomState,
             ErrorCode::InvalidUsername => ErrorKind::InvalidUsername,
-            #[cfg(feature = "unstable-msc4380")]
             ErrorCode::InviteBlocked => ErrorKind::InviteBlocked,
-            ErrorCode::LimitExceeded => ErrorKind::LimitExceeded {
+            ErrorCode::LimitExceeded => ErrorKind::LimitExceeded(LimitExceededErrorData {
                 retry_after: retry_after_ms
                     .map(from_json_value::<UInt>)
                     .transpose()
@@ -209,7 +220,7 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
                     .map(Into::into)
                     .map(Duration::from_millis)
                     .map(RetryAfter::Delay),
-            },
+            }),
             ErrorCode::MissingParam => ErrorKind::MissingParam,
             ErrorCode::MissingToken => ErrorKind::MissingToken,
             ErrorCode::NotFound => ErrorKind::NotFound,
@@ -217,12 +228,14 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
             ErrorCode::NotInThread => ErrorKind::NotInThread,
             ErrorCode::NotJson => ErrorKind::NotJson,
             ErrorCode::NotYetUploaded => ErrorKind::NotYetUploaded,
-            ErrorCode::ResourceLimitExceeded => ErrorKind::ResourceLimitExceeded {
-                admin_contact: from_json_value(
-                    admin_contact.ok_or_else(|| de::Error::missing_field("admin_contact"))?,
-                )
-                .map_err(de::Error::custom)?,
-            },
+            ErrorCode::ResourceLimitExceeded => {
+                ErrorKind::ResourceLimitExceeded(ResourceLimitExceededErrorData {
+                    admin_contact: from_json_value(
+                        admin_contact.ok_or_else(|| de::Error::missing_field("admin_contact"))?,
+                    )
+                    .map_err(de::Error::custom)?,
+                })
+            }
             ErrorCode::RoomInUse => ErrorKind::RoomInUse,
             ErrorCode::ServerNotTrusted => ErrorKind::ServerNotTrusted,
             ErrorCode::ThreepidAuthFailed => ErrorKind::ThreepidAuthFailed,
@@ -230,6 +243,7 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
             ErrorCode::ThreepidInUse => ErrorKind::ThreepidInUse,
             ErrorCode::ThreepidMediumNotSupported => ErrorKind::ThreepidMediumNotSupported,
             ErrorCode::ThreepidNotFound => ErrorKind::ThreepidNotFound,
+            ErrorCode::TokenIncorrect => ErrorKind::TokenIncorrect,
             ErrorCode::TooLarge => ErrorKind::TooLarge,
             ErrorCode::UnableToAuthorizeJoin => ErrorKind::UnableToAuthorizeJoin,
             ErrorCode::UnableToGrantJoin => ErrorKind::UnableToGrantJoin,
@@ -239,28 +253,46 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
             ErrorCode::Unknown => ErrorKind::Unknown,
             #[cfg(feature = "unstable-msc4186")]
             ErrorCode::UnknownPos => ErrorKind::UnknownPos,
-            ErrorCode::UnknownToken => ErrorKind::UnknownToken {
+            ErrorCode::UnknownToken => ErrorKind::UnknownToken(UnknownTokenErrorData {
                 soft_logout: soft_logout
                     .map(from_json_value)
                     .transpose()
                     .map_err(de::Error::custom)?
                     .unwrap_or_default(),
-            },
+            }),
             ErrorCode::Unrecognized => ErrorKind::Unrecognized,
             ErrorCode::UnsupportedRoomVersion => ErrorKind::UnsupportedRoomVersion,
             ErrorCode::UrlNotSet => ErrorKind::UrlNotSet,
             ErrorCode::UserDeactivated => ErrorKind::UserDeactivated,
             ErrorCode::UserInUse => ErrorKind::UserInUse,
+            ErrorCode::UserLimitExceeded => {
+                ErrorKind::UserLimitExceeded(UserLimitExceededErrorData {
+                    info_uri: from_json_value(
+                        info_uri.ok_or_else(|| de::Error::missing_field("info_uri"))?,
+                    )
+                    .map_err(de::Error::custom)?,
+                    can_upgrade: can_upgrade
+                        .map(from_json_value)
+                        .transpose()
+                        .map_err(de::Error::custom)?
+                        .unwrap_or_default(),
+                })
+            }
             ErrorCode::UserLocked => ErrorKind::UserLocked,
             ErrorCode::UserSuspended => ErrorKind::UserSuspended,
             ErrorCode::WeakPassword => ErrorKind::WeakPassword,
-            ErrorCode::WrongRoomKeysVersion => ErrorKind::WrongRoomKeysVersion {
-                current_version: from_json_value(
-                    current_version.ok_or_else(|| de::Error::missing_field("current_version"))?,
-                )
-                .map_err(de::Error::custom)?,
-            },
-            ErrorCode::_Custom(errcode) => ErrorKind::_Custom { errcode, extra },
+            ErrorCode::WrongRoomKeysVersion => {
+                ErrorKind::WrongRoomKeysVersion(WrongRoomKeysVersionErrorData {
+                    current_version: from_json_value(
+                        current_version
+                            .ok_or_else(|| de::Error::missing_field("current_version"))?,
+                    )
+                    .map_err(de::Error::custom)?,
+                })
+            }
+            ErrorCode::_Custom(errcode) => {
+                ErrorKind::_Custom(CustomErrorKind { errcode: errcode.0.into(), data })
+            }
         })
     }
 }
@@ -282,27 +314,101 @@ impl Serialize for ErrorKind {
         let mut st = serializer.serialize_map(None)?;
         st.serialize_entry("errcode", &self.errcode())?;
         match self {
-            Self::UnknownToken { soft_logout: true } | Self::UserLocked => {
-                st.serialize_entry("soft_logout", &true)?;
+            Self::BadStatus(BadStatusErrorData { status, body }) => {
+                if let Some(status) = status {
+                    st.serialize_entry("status", &status.as_u16())?;
+                }
+                if let Some(body) = body {
+                    st.serialize_entry("body", body)?;
+                }
             }
-            Self::LimitExceeded { retry_after: Some(RetryAfter::Delay(duration)) } => {
+            Self::IncompatibleRoomVersion(IncompatibleRoomVersionErrorData { room_version }) => {
+                st.serialize_entry("room_version", room_version)?;
+            }
+            Self::LimitExceeded(LimitExceededErrorData {
+                retry_after: Some(RetryAfter::Delay(duration)),
+            }) => {
                 st.serialize_entry(
                     "retry_after_ms",
                     &UInt::try_from(duration.as_millis()).map_err(ser::Error::custom)?,
                 )?;
             }
-            Self::IncompatibleRoomVersion { room_version } => {
-                st.serialize_entry("room_version", room_version)?;
-            }
-            Self::ResourceLimitExceeded { admin_contact } => {
+            Self::ResourceLimitExceeded(ResourceLimitExceededErrorData { admin_contact }) => {
                 st.serialize_entry("admin_contact", admin_contact)?;
             }
-            Self::_Custom { extra, .. } => {
-                for (k, v) in &extra.0 {
+            Self::UnknownToken(UnknownTokenErrorData { soft_logout: true }) | Self::UserLocked => {
+                st.serialize_entry("soft_logout", &true)?;
+            }
+            Self::UserLimitExceeded(UserLimitExceededErrorData { info_uri, can_upgrade }) => {
+                st.serialize_entry("info_uri", info_uri)?;
+
+                if *can_upgrade {
+                    st.serialize_entry("can_upgrade", can_upgrade)?;
+                }
+            }
+            Self::WrongRoomKeysVersion(WrongRoomKeysVersionErrorData { current_version }) => {
+                st.serialize_entry("current_version", current_version)?;
+            }
+            Self::_Custom(CustomErrorKind { data, .. }) => {
+                for (k, v) in data {
                     st.serialize_entry(k, v)?;
                 }
             }
-            _ => {}
+            Self::AppserviceLoginUnsupported
+            | Self::BadAlias
+            | Self::BadJson
+            | Self::BadState
+            | Self::CannotLeaveServerNoticeRoom
+            | Self::CannotOverwriteMedia
+            | Self::CaptchaInvalid
+            | Self::CaptchaNeeded
+            | Self::ConnectionFailed
+            | Self::ConnectionTimeout
+            | Self::DuplicateAnnotation
+            | Self::Exclusive
+            | Self::Forbidden
+            | Self::GuestAccessForbidden
+            | Self::InvalidParam
+            | Self::InvalidRoomState
+            | Self::InvalidUsername
+            | Self::InviteBlocked
+            | Self::LimitExceeded(LimitExceededErrorData {
+                retry_after: None | Some(RetryAfter::DateTime(_)),
+            })
+            | Self::MissingParam
+            | Self::MissingToken
+            | Self::NotFound
+            | Self::NotJson
+            | Self::NotYetUploaded
+            | Self::RoomInUse
+            | Self::ServerNotTrusted
+            | Self::ThreepidAuthFailed
+            | Self::ThreepidDenied
+            | Self::ThreepidInUse
+            | Self::ThreepidMediumNotSupported
+            | Self::ThreepidNotFound
+            | Self::TokenIncorrect
+            | Self::TooLarge
+            | Self::UnableToAuthorizeJoin
+            | Self::UnableToGrantJoin
+            | Self::Unauthorized
+            | Self::Unknown
+            | Self::UnknownToken(UnknownTokenErrorData { soft_logout: false })
+            | Self::Unrecognized
+            | Self::UnsupportedRoomVersion
+            | Self::UrlNotSet
+            | Self::UserDeactivated
+            | Self::UserInUse
+            | Self::UserSuspended
+            | Self::WeakPassword => {}
+            #[cfg(feature = "unstable-msc4306")]
+            Self::ConflictingUnsubscription => {}
+            #[cfg(feature = "unstable-msc4306")]
+            Self::NotInThread => {}
+            #[cfg(feature = "unstable-msc3843")]
+            Self::Unactionable => {}
+            #[cfg(feature = "unstable-msc4186")]
+            Self::UnknownPos => {}
         }
         st.end()
     }
@@ -313,18 +419,12 @@ mod tests {
     use ruma_common::room_version_id;
     use serde_json::{from_value as from_json_value, json};
 
-    use super::ErrorKind;
+    use super::{ErrorKind, IncompatibleRoomVersionErrorData};
 
     #[test]
     fn deserialize_forbidden() {
         let deserialized: ErrorKind = from_json_value(json!({ "errcode": "M_FORBIDDEN" })).unwrap();
-        assert_eq!(
-            deserialized,
-            ErrorKind::Forbidden {
-                #[cfg(feature = "unstable-msc2967")]
-                authenticate: None
-            }
-        );
+        assert_eq!(deserialized, ErrorKind::Forbidden);
     }
 
     #[test]
@@ -335,13 +435,7 @@ mod tests {
         }))
         .unwrap();
 
-        assert_eq!(
-            deserialized,
-            ErrorKind::Forbidden {
-                #[cfg(feature = "unstable-msc2967")]
-                authenticate: None
-            }
-        );
+        assert_eq!(deserialized, ErrorKind::Forbidden);
     }
 
     #[test]
@@ -354,7 +448,9 @@ mod tests {
 
         assert_eq!(
             deserialized,
-            ErrorKind::IncompatibleRoomVersion { room_version: room_version_id!("7") }
+            ErrorKind::IncompatibleRoomVersion(IncompatibleRoomVersionErrorData {
+                room_version: room_version_id!("7")
+            })
         );
     }
 }

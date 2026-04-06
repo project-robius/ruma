@@ -22,6 +22,14 @@ pub enum RoomType {
     #[ruma_enum(rename = "m.space")]
     Space,
 
+    /// Defines the room as a call.
+    ///
+    /// This uses the unstable prefix in
+    /// [MSC3417](https://github.com/matrix-org/matrix-spec-proposals/pull/3417).
+    #[cfg(feature = "unstable-msc3417")]
+    #[ruma_enum(rename = "org.matrix.msc3417.call")]
+    Call,
+
     /// Defines the room as a custom type.
     #[doc(hidden)]
     _Custom(PrivOwnedStr),
@@ -606,12 +614,13 @@ mod tests {
     use assert_matches2::assert_matches;
     use js_int::uint;
     use ruma_common::{OwnedRoomId, owned_room_id};
-    use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+    use serde_json::{from_value as from_json_value, json};
 
     use super::{
         AllowRule, CustomAllowRule, JoinRule, JoinRuleSummary, Restricted, RestrictedSummary,
         RoomMembership, RoomSummary,
     };
+    use crate::assert_to_canonical_json_eq;
 
     #[test]
     fn deserialize_summary_no_join_rule() {
@@ -697,8 +706,8 @@ mod tests {
             false,
         );
 
-        assert_eq!(
-            to_json_value(&summary).unwrap(),
+        assert_to_canonical_json_eq!(
+            summary,
             json!({
                 "room_id": "!room:localhost",
                 "num_joined_members": 5,
@@ -721,8 +730,8 @@ mod tests {
             false,
         );
 
-        assert_eq!(
-            to_json_value(&summary).unwrap(),
+        assert_to_canonical_json_eq!(
+            summary,
             json!({
                 "room_id": "!room:localhost",
                 "num_joined_members": 5,

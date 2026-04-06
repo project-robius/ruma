@@ -5,7 +5,7 @@
 pub mod v3 {
     //! `/v3/` ([spec])
     //!
-    //! [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixmediav3thumbnailservernamemediaid
+    //! [spec]: https://spec.matrix.org/v1.18/client-server-api/#get_matrixmediav3thumbnailservernamemediaid
 
     use std::time::Duration;
 
@@ -14,7 +14,7 @@ pub mod v3 {
     pub use ruma_common::media::Method;
     use ruma_common::{
         IdParseError, MxcUri, OwnedServerName,
-        api::{auth_scheme::NoAuthentication, request, response},
+        api::{auth_scheme::NoAccessToken, request, response},
         http_headers::ContentDisposition,
         metadata,
     };
@@ -24,7 +24,7 @@ pub mod v3 {
     metadata! {
         method: GET,
         rate_limited: true,
-        authentication: NoAuthentication,
+        authentication: NoAccessToken,
         history: {
             1.0 => "/_matrix/media/r0/thumbnail/{server_name}/{media_id}",
             1.1 => "/_matrix/media/v3/thumbnail/{server_name}/{media_id}",

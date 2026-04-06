@@ -76,6 +76,18 @@ pub enum CanonicalJsonValue {
 }
 
 impl CanonicalJsonValue {
+    /// The type of this value.
+    pub fn json_type(&self) -> CanonicalJsonType {
+        match self {
+            Self::Null => CanonicalJsonType::Null,
+            Self::Bool(_) => CanonicalJsonType::Boolean,
+            Self::Integer(_) => CanonicalJsonType::Integer,
+            Self::String(_) => CanonicalJsonType::String,
+            Self::Array(_) => CanonicalJsonType::Array,
+            Self::Object(_) => CanonicalJsonType::Object,
+        }
+    }
+
     /// If the `CanonicalJsonValue` is a `Bool`, return the inner value.
     pub fn as_bool(&self) -> Option<bool> {
         as_variant!(self, Self::Bool).copied()
@@ -178,10 +190,21 @@ impl TryFrom<JsonValue> for CanonicalJsonValue {
     fn try_from(val: JsonValue) -> Result<Self, Self::Error> {
         Ok(match val {
             JsonValue::Bool(b) => Self::Bool(b),
-            JsonValue::Number(num) => Self::Integer(
-                Int::try_from(num.as_i64().ok_or(CanonicalJsonError::IntConvert)?)
-                    .map_err(|_| CanonicalJsonError::IntConvert)?,
-            ),
+            JsonValue::Number(num) => {
+                // Treat float separately to get a better error message.
+                //
+                // We do several checks because the docs say that `num.is_f64()` is not guaranteed
+                // to return `false` for an integer in the future.
+                if !num.is_i64() && !num.is_u64() && num.is_f64() {
+                    return Err(CanonicalJsonError::InvalidType("float".to_owned()));
+                }
+
+                Self::Integer(
+                    num.as_i64()
+                        .and_then(|num| Int::try_from(num).ok())
+                        .ok_or(CanonicalJsonError::IntegerOutOfRange)?,
+                )
+            }
             JsonValue::Array(vec) => {
                 Self::Array(vec.into_iter().map(TryInto::try_into).collect::<Result<Vec<_>, _>>()?)
             }
@@ -289,6 +312,29 @@ impl<'de> Deserialize<'de> for CanonicalJsonValue {
         let val = JsonValue::deserialize(deserializer)?;
         val.try_into().map_err(serde::de::Error::custom)
     }
+}
+
+/// The possible types of a [`CanonicalJsonValue`].
+#[derive(Debug)]
+#[allow(clippy::exhaustive_enums)]
+pub enum CanonicalJsonType {
+    /// A JSON Object.
+    Object,
+
+    /// A JSON String.
+    String,
+
+    /// A JSON Integer.
+    Integer,
+
+    /// A JSON Array.
+    Array,
+
+    /// A JSON Boolean.
+    Boolean,
+
+    /// JSON Null.
+    Null,
 }
 
 #[cfg(test)]

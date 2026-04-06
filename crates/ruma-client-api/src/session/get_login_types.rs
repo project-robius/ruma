@@ -6,13 +6,13 @@
 pub mod v3 {
     //! `/v3/` ([spec])
     //!
-    //! [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3login
+    //! [spec]: https://spec.matrix.org/v1.18/client-server-api/#get_matrixclientv3login
 
     use std::borrow::Cow;
 
     use ruma_common::{
         OwnedMxcUri,
-        api::{auth_scheme::NoAuthentication, request, response},
+        api::{auth_scheme::NoAccessToken, request, response},
         metadata,
         serde::{JsonObject, StringEnum},
     };
@@ -24,7 +24,7 @@ pub mod v3 {
     metadata! {
         method: GET,
         rate_limited: true,
-        authentication: NoAuthentication,
+        authentication: NoAccessToken,
         history: {
             1.0 => "/_matrix/client/r0/login",
             1.1 => "/_matrix/client/v3/login",
@@ -173,18 +173,13 @@ pub mod v3 {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         pub identity_providers: Vec<IdentityProvider>,
 
-        /// Whether this SSO login is for OIDC-aware compatibility.
+        /// Whether this flow is preferred over other flows.
         ///
-        /// This field uses the unstable prefix defined in [MSC3824].
+        /// If this is `true`, [OAuth 2.0 aware clients] must only offer this flow to the user.
         ///
-        /// [MSC3824]: https://github.com/matrix-org/matrix-spec-proposals/pull/3824
-        #[cfg(feature = "unstable-msc3824")]
-        #[serde(
-            default,
-            skip_serializing_if = "ruma_common::serde::is_default",
-            rename = "org.matrix.msc3824.delegated_oidc_compatibility"
-        )]
-        pub delegated_oidc_compatibility: bool,
+        /// [OAuth 2.0 aware clients]: https://spec.matrix.org/v1.18/client-server-api/#oauth-20-aware-clients
+        #[serde(default, skip_serializing_if = "ruma_common::serde::is_default")]
+        pub oauth_aware_preferred: bool,
     }
 
     impl SsoLoginType {
@@ -324,12 +319,10 @@ pub mod v3 {
 
     #[cfg(test)]
     mod tests {
-        use assert_matches2::assert_matches;
-        use ruma_common::mxc_uri;
+        use assert_matches2::{assert_let, assert_matches};
+        use ruma_common::{canonical_json::assert_to_canonical_json_eq, mxc_uri};
         use serde::{Deserialize, Serialize};
-        use serde_json::{
-            Value as JsonValue, from_value as from_json_value, json, to_value as to_json_value,
-        };
+        use serde_json::{Value as JsonValue, from_value as from_json_value, json};
 
         use super::{
             IdentityProvider, IdentityProviderBrand, LoginType, SsoLoginType, TokenLoginType,
@@ -364,7 +357,7 @@ pub mod v3 {
             }))
             .unwrap();
             assert_eq!(wrapper.flows.len(), 1);
-            assert_matches!(&wrapper.flows[0], LoginType::_Custom(custom));
+            assert_let!(LoginType::_Custom(custom) = &wrapper.flows[0]);
             assert_eq!(custom.type_, "io.ruma.custom");
             assert_eq!(custom.data.len(), 1);
             assert_eq!(custom.data.get("color"), Some(&JsonValue::from("green")));
@@ -395,13 +388,9 @@ pub mod v3 {
             assert_eq!(wrapper.flows.len(), 1);
             let flow = &wrapper.flows[0];
 
-            assert_matches!(
-                flow,
-                LoginType::Sso(SsoLoginType {
-                    identity_providers,
-                    #[cfg(feature = "unstable-msc3824")]
-                    delegated_oidc_compatibility: false
-                })
+            assert_let!(
+                LoginType::Sso(SsoLoginType { identity_providers, oauth_aware_preferred: false }) =
+                    flow
             );
             assert_eq!(identity_providers.len(), 2);
 
@@ -420,7 +409,7 @@ pub mod v3 {
 
         #[test]
         fn serialize_sso_login_type() {
-            let wrapper = to_json_value(Wrapper {
+            let wrapper = Wrapper {
                 flows: vec![
                     LoginType::Token(TokenLoginType::new()),
                     LoginType::Sso(SsoLoginType {
@@ -430,14 +419,12 @@ pub mod v3 {
                             icon: Some("mxc://localhost/github-icon".into()),
                             brand: Some(IdentityProviderBrand::GitHub),
                         }],
-                        #[cfg(feature = "unstable-msc3824")]
-                        delegated_oidc_compatibility: false,
+                        oauth_aware_preferred: false,
                     }),
                 ],
-            })
-            .unwrap();
+            };
 
-            assert_eq!(
+            assert_to_canonical_json_eq!(
                 wrapper,
                 json!({
                     "flows": [

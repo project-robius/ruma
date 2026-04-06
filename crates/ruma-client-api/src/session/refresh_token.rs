@@ -23,19 +23,19 @@
 pub mod v3 {
     //! `/v3/` ([spec])
     //!
-    //! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3refresh
+    //! [spec]: https://spec.matrix.org/v1.18/client-server-api/#post_matrixclientv3refresh
 
     use std::time::Duration;
 
     use ruma_common::{
-        api::{auth_scheme::NoAuthentication, request, response},
+        api::{auth_scheme::NoAccessToken, request, response},
         metadata,
     };
 
     metadata! {
         method: POST,
         rate_limited: true,
-        authentication: NoAuthentication,
+        authentication: NoAccessToken,
         history: {
             unstable => "/_matrix/client/unstable/org.matrix.msc2918/refresh",
             1.3 => "/_matrix/client/v3/refresh",

@@ -1,8 +1,7 @@
 use ruma_common::serde::StringEnum;
-use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+use serde_json::{from_value as from_json_value, json};
 
-#[derive(Debug, PartialEq)]
-struct PrivOwnedStr(Box<str>);
+ruma_common::priv_owned_str!();
 
 #[derive(StringEnum)]
 #[ruma_enum(rename_all = "snake_case")]
@@ -116,20 +115,19 @@ fn from_string() {
 
 #[test]
 fn serialize() {
-    assert_eq!(to_json_value(MyEnum::First).unwrap(), json!("first"));
-    assert_eq!(to_json_value(MyEnum::HelloWorld).unwrap(), json!("hello_world"));
-    assert_eq!(to_json_value(MyEnum::Stable).unwrap(), json!("io.ruma.unstable"));
-    assert_eq!(
-        to_json_value(MyEnum::_Custom(PrivOwnedStr("\\\n\\".into()))).unwrap(),
-        json!("\\\n\\")
-    );
+    use ruma_common::canonical_json::assert_to_canonical_json_eq;
 
-    assert_eq!(to_json_value(MyUnstableEnum::First).unwrap(), json!("unstable-first"));
-    assert_eq!(to_json_value(MyUnstableEnum::HelloWorld).unwrap(), json!("unstable-hello-world"));
-    assert_eq!(to_json_value(MyUnstableEnum::Stable).unwrap(), json!("io.ruma.unstable"));
-    assert_eq!(
-        to_json_value(MyUnstableEnum::_Custom(PrivOwnedStr("\\\n\\".into()))).unwrap(),
-        json!("\\\n\\")
+    assert_to_canonical_json_eq!(MyEnum::First, json!("first"));
+    assert_to_canonical_json_eq!(MyEnum::HelloWorld, json!("hello_world"));
+    assert_to_canonical_json_eq!(MyEnum::Stable, json!("io.ruma.unstable"));
+    assert_to_canonical_json_eq!(MyEnum::_Custom(PrivOwnedStr("\\\n\\".into())), json!("\\\n\\"));
+
+    assert_to_canonical_json_eq!(MyUnstableEnum::First, json!("unstable-first"));
+    assert_to_canonical_json_eq!(MyUnstableEnum::HelloWorld, json!("unstable-hello-world"));
+    assert_to_canonical_json_eq!(MyUnstableEnum::Stable, json!("io.ruma.unstable"));
+    assert_to_canonical_json_eq!(
+        MyUnstableEnum::_Custom(PrivOwnedStr("\\\n\\".into())),
+        json!("\\\n\\"),
     );
 }
 

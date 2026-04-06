@@ -16,7 +16,7 @@ use super::room::encrypted;
 /// Event types that servers should send as [stripped state] to help clients identify a room when
 /// they can't access the full room state.
 ///
-/// [stripped state]: https://spec.matrix.org/latest/client-server-api/#stripped-state
+/// [stripped state]: https://spec.matrix.org/v1.18/client-server-api/#stripped-state
 pub const RECOMMENDED_STRIPPED_STATE_EVENT_TYPES: &[StateEventType] = &[
     StateEventType::RoomCreate,
     StateEventType::RoomName,
@@ -30,7 +30,7 @@ pub const RECOMMENDED_STRIPPED_STATE_EVENT_TYPES: &[StateEventType] = &[
 /// Event types that servers should transfer upon [room upgrade]. The exact details for what is
 /// transferred is left as an implementation detail.
 ///
-/// [room upgrade]: https://spec.matrix.org/v1.17/client-server-api/#server-behaviour-19
+/// [room upgrade]: https://spec.matrix.org/v1.18/client-server-api/#server-behaviour-21
 pub const RECOMMENDED_TRANSFERABLE_STATE_EVENT_TYPES: &[StateEventType] = &[
     StateEventType::RoomServerAcl,
     StateEventType::RoomEncryption,
@@ -51,8 +51,9 @@ event_enum! {
         #[ruma_enum(ident = DoNotDisturb, alias = "m.do_not_disturb")]
         "dm.filament.do_not_disturb" => super::do_not_disturb,
         "m.identity_server" => super::identity_server,
+        "m.invite_permission_config" => super::invite_permission_config,
         #[cfg(feature = "unstable-msc4380")]
-        #[ruma_enum(ident = InvitePermissionConfig, alias = "m.invite_permission_config")]
+        #[ruma_enum(ident = UnstableInvitePermissionConfig)]
         "org.matrix.msc4380.invite_permission_config" => super::invite_permission_config,
         "m.ignored_user_list" => super::ignored_user_list,
         "m.push_rules" => super::push_rules,
@@ -69,6 +70,7 @@ event_enum! {
         #[cfg(feature = "unstable-msc2545")]
         #[ruma_enum(ident = ImagePackRooms, alias = "m.image_pack.rooms")]
         "im.ponies.emote_rooms" => super::image_pack,
+        "m.recent_emoji" => super::recent_emoji,
     }
 
     /// Any room account data event.
@@ -195,6 +197,7 @@ event_enum! {
         "m.room.member" => super::room::member,
         "m.room.name" => super::room::name,
         "m.room.pinned_events" => super::room::pinned_events,
+        "m.room.policy" => super::room::policy,
         "m.room.power_levels" => super::room::power_levels,
         "m.room.server_acl" => super::room::server_acl,
         "m.room.third_party_invite" => super::room::third_party_invite,
@@ -237,6 +240,9 @@ event_enum! {
         "m.room.encrypted" => super::room::encrypted,
         "m.secret.request"=> super::secret::request,
         "m.secret.send" => super::secret::send,
+        #[cfg(feature = "unstable-msc4385")]
+        #[ruma_enum(alias = "m.secret.push")]
+        "io.element.msc4385.secret.push" => super::secret::push,
     }
 }
 
@@ -326,6 +332,9 @@ impl AnySyncTimelineEvent {
 
         /// Returns this event's `transaction_id` from inside `unsigned`, if there is one.
         pub fn transaction_id(&self) -> Option<&TransactionId>;
+
+        /// Returns whether this event is in its redacted form or not.
+        pub fn is_redacted(&self) -> bool;
     }
 
     /// Returns this event's `type`.

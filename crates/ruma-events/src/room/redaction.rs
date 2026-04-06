@@ -1,14 +1,13 @@
 //! Types for the [`m.room.redaction`] event.
 //!
-//! [`m.room.redaction`]: https://spec.matrix.org/latest/client-server-api/#mroomredaction
+//! [`m.room.redaction`]: https://spec.matrix.org/v1.18/client-server-api/#mroomredaction
 
 use as_variant::as_variant;
 use js_int::Int;
-#[cfg(feature = "canonical-json")]
-use ruma_common::canonical_json::RedactionEvent;
 use ruma_common::{
     EventId, MilliSecondsSinceUnixEpoch, OwnedEventId, OwnedRoomId, OwnedTransactionId,
     OwnedUserId, RoomId, UserId,
+    canonical_json::RedactionEvent,
     room_version_rules::RedactionRules,
     serde::{CanBeEmpty, JsonCastable, JsonObject},
 };
@@ -435,13 +434,12 @@ impl OriginalSyncRoomRedactionEvent {
     }
 }
 
-#[cfg(feature = "canonical-json")]
 impl RedactionEvent for OriginalRoomRedactionEvent {}
-#[cfg(feature = "canonical-json")]
+
 impl RedactionEvent for OriginalSyncRoomRedactionEvent {}
-#[cfg(feature = "canonical-json")]
+
 impl RedactionEvent for RoomRedactionEvent {}
-#[cfg(feature = "canonical-json")]
+
 impl RedactionEvent for SyncRoomRedactionEvent {}
 
 /// Extra information about a redaction that is not incorporated into the event's hash.
@@ -461,7 +459,7 @@ pub struct RoomRedactionUnsigned {
 
     /// [Bundled aggregations] of related child events.
     ///
-    /// [Bundled aggregations]: https://spec.matrix.org/latest/client-server-api/#aggregations-of-child-events
+    /// [Bundled aggregations]: https://spec.matrix.org/v1.18/client-server-api/#aggregations-of-child-events
     #[serde(rename = "m.relations", default)]
     pub relations: BundledMessageLikeRelations<OriginalSyncRoomRedactionEvent>,
 }

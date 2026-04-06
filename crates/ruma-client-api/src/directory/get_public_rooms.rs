@@ -5,12 +5,12 @@
 pub mod v3 {
     //! `/v3/` ([spec])
     //!
-    //! [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3publicrooms
+    //! [spec]: https://spec.matrix.org/v1.18/client-server-api/#get_matrixclientv3publicrooms
 
     use js_int::UInt;
     use ruma_common::{
         OwnedServerName,
-        api::{auth_scheme::NoAuthentication, request, response},
+        api::{auth_scheme::NoAccessToken, request, response},
         directory::PublicRoomsChunk,
         metadata,
     };
@@ -18,7 +18,7 @@ pub mod v3 {
     metadata! {
         method: GET,
         rate_limited: false,
-        authentication: NoAuthentication,
+        authentication: NoAccessToken,
         history: {
             1.0 => "/_matrix/client/r0/publicRooms",
             1.1 => "/_matrix/client/v3/publicRooms",
@@ -94,7 +94,7 @@ pub mod v3 {
                     MatrixVersion, OutgoingRequest as _, SupportedVersions,
                     auth_scheme::SendAccessToken,
                 },
-                server_name,
+                owned_server_name,
             };
 
             let supported = SupportedVersions {
@@ -105,7 +105,7 @@ pub mod v3 {
             let req = super::Request {
                 limit: Some(uint!(10)),
                 since: Some("hello".to_owned()),
-                server: Some(server_name!("test.tld").to_owned()),
+                server: Some(owned_server_name!("test.tld")),
             }
             .try_into_http_request::<Vec<u8>>(
                 "https://homeserver.tld",

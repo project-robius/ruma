@@ -1,6 +1,6 @@
 //! Types for the [`m.secret_storage.key.*`] event.
 //!
-//! [`m.secret_storage.key.*`]: https://spec.matrix.org/latest/client-server-api/#key-storage
+//! [`m.secret_storage.key.*`]: https://spec.matrix.org/v1.18/client-server-api/#key-storage
 
 use std::borrow::Cow;
 
@@ -57,7 +57,7 @@ fn is_default_bits(val: &UInt) -> bool {
 ///
 /// The only algorithm currently specified is `m.secret_storage.v1.aes-hmac-sha2`, so this
 /// essentially represents `AesHmacSha2KeyDescription` in the
-/// [spec](https://spec.matrix.org/v1.17/client-server-api/#msecret_storagev1aes-hmac-sha2).
+/// [spec](https://spec.matrix.org/v1.18/client-server-api/#msecret_storagev1aes-hmac-sha2).
 #[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 #[derive(Clone, Debug, Serialize, EventContent)]
 #[ruma_event(type = "m.secret_storage.key.*", kind = GlobalAccountData)]
@@ -137,7 +137,7 @@ impl SecretStorageEncryptionAlgorithm {
 /// The key properties for the `m.secret_storage.v1.aes-hmac-sha2` algorithm.
 ///
 /// Corresponds to the AES-specific properties of `AesHmacSha2KeyDescription` in the
-/// [spec](https://spec.matrix.org/v1.17/client-server-api/#msecret_storagev1aes-hmac-sha2).
+/// [spec](https://spec.matrix.org/v1.18/client-server-api/#msecret_storagev1aes-hmac-sha2).
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 pub struct SecretStorageV1AesHmacSha2Properties {
@@ -172,10 +172,11 @@ pub struct CustomSecretEncryptionAlgorithm {
 mod tests {
     use assert_matches2::assert_matches;
     use js_int::uint;
-    use ruma_common::{KeyDerivationAlgorithm, serde::Base64};
+    use ruma_common::{
+        KeyDerivationAlgorithm, canonical_json::assert_to_canonical_json_eq, serde::Base64,
+    };
     use serde_json::{
-        from_value as from_json_value, json, to_value as to_json_value,
-        value::to_raw_value as to_raw_json_value,
+        from_value as from_json_value, json, value::to_raw_value as to_raw_json_value,
     };
 
     use super::{
@@ -195,14 +196,15 @@ mod tests {
         );
         content.name = Some("my_key".to_owned());
 
-        let json = json!({
-            "name": "my_key",
-            "algorithm": "m.secret_storage.v1.aes-hmac-sha2",
-            "iv": "YWJjZGVmZ2hpamtsbW5vcA",
-            "mac": "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U"
-        });
-
-        assert_eq!(to_json_value(&content).unwrap(), json);
+        assert_to_canonical_json_eq!(
+            content,
+            json!({
+                "name": "my_key",
+                "algorithm": "m.secret_storage.v1.aes-hmac-sha2",
+                "iv": "YWJjZGVmZ2hpamtsbW5vcA",
+                "mac": "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U",
+            }),
+        );
     }
 
     #[test]
@@ -273,19 +275,20 @@ mod tests {
         };
         content.name = Some("my_key".to_owned());
 
-        let json = json!({
-            "name": "my_key",
-            "algorithm": "m.secret_storage.v1.aes-hmac-sha2",
-            "iv": "YWJjZGVmZ2hpamtsbW5vcA",
-            "mac": "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U",
-            "passphrase": {
-                "algorithm": "m.pbkdf2",
-                "salt": "rocksalt",
-                "iterations": 8
-            }
-        });
-
-        assert_eq!(to_json_value(&content).unwrap(), json);
+        assert_to_canonical_json_eq!(
+            content,
+            json!({
+                "name": "my_key",
+                "algorithm": "m.secret_storage.v1.aes-hmac-sha2",
+                "iv": "YWJjZGVmZ2hpamtsbW5vcA",
+                "mac": "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U",
+                "passphrase": {
+                    "algorithm": "m.pbkdf2",
+                    "salt": "rocksalt",
+                    "iterations": 8,
+                },
+            }),
+        );
     }
 
     #[test]
@@ -336,14 +339,15 @@ mod tests {
         );
         content.name = Some("my_key".to_owned());
 
-        let json = json!({
-            "name": "my_key",
-            "algorithm": "m.secret_storage.v1.aes-hmac-sha2",
-            "iv": "YWJjZGVmZ2hpamtsbW5vcA",
-            "mac": "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U"
-        });
-
-        assert_eq!(to_json_value(&content).unwrap(), json);
+        assert_to_canonical_json_eq!(
+            content,
+            json!({
+                "name": "my_key",
+                "algorithm": "m.secret_storage.v1.aes-hmac-sha2",
+                "iv": "YWJjZGVmZ2hpamtsbW5vcA",
+                "mac": "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U",
+            }),
+        );
     }
 
     #[test]
@@ -358,17 +362,18 @@ mod tests {
         content.name = Some("my_key".to_owned());
         let event = GlobalAccountDataEvent { content };
 
-        let json = json!({
-            "type": "m.secret_storage.key.my_key_id",
-            "content": {
-                "name": "my_key",
-                "algorithm": "m.secret_storage.v1.aes-hmac-sha2",
-                "iv": "YWJjZGVmZ2hpamtsbW5vcA",
-                "mac": "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U"
-            }
-        });
-
-        assert_eq!(to_json_value(&event).unwrap(), json);
+        assert_to_canonical_json_eq!(
+            event,
+            json!({
+                "type": "m.secret_storage.key.my_key_id",
+                "content": {
+                    "name": "my_key",
+                    "algorithm": "m.secret_storage.v1.aes-hmac-sha2",
+                    "iv": "YWJjZGVmZ2hpamtsbW5vcA",
+                    "mac": "aWRvbnRrbm93d2hhdGFtYWNsb29rc2xpa2U",
+                },
+            }),
+        );
     }
 
     #[test]

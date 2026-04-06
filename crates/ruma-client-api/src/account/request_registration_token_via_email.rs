@@ -5,12 +5,12 @@
 pub mod v3 {
     //! `/v3/` ([spec])
     //!
-    //! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3registeremailrequesttoken
+    //! [spec]: https://spec.matrix.org/v1.18/client-server-api/#post_matrixclientv3registeremailrequesttoken
 
     use js_int::UInt;
     use ruma_common::{
         OwnedClientSecret, OwnedSessionId,
-        api::{auth_scheme::NoAuthentication, request, response},
+        api::{auth_scheme::NoAccessToken, request, response},
         metadata,
     };
 
@@ -19,7 +19,7 @@ pub mod v3 {
     metadata! {
         method: POST,
         rate_limited: false,
-        authentication: NoAuthentication,
+        authentication: NoAccessToken,
         history: {
             1.0 => "/_matrix/client/r0/register/email/requestToken",
             1.1 => "/_matrix/client/v3/register/email/requestToken",

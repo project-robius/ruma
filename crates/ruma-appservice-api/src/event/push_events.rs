@@ -5,7 +5,7 @@
 pub mod v1 {
     //! `/v1/` ([spec])
     //!
-    //! [spec]: https://spec.matrix.org/latest/application-service-api/#put_matrixappv1transactionstxnid
+    //! [spec]: https://spec.matrix.org/v1.18/application-service-api/#put_matrixappv1transactionstxnid
 
     use std::borrow::Cow;
     #[cfg(feature = "unstable-msc3202")]
@@ -326,11 +326,14 @@ pub mod v1 {
 
     #[cfg(test)]
     mod tests {
-        use assert_matches2::assert_matches;
+        use assert_matches2::assert_let;
         use js_int::uint;
-        use ruma_common::{MilliSecondsSinceUnixEpoch, event_id, room_id, user_id};
+        use ruma_common::{
+            MilliSecondsSinceUnixEpoch, canonical_json::assert_to_canonical_json_eq, event_id,
+            room_id, user_id,
+        };
         use ruma_events::receipt::ReceiptType;
-        use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+        use serde_json::{from_value as from_json_value, json};
 
         use super::EphemeralData;
 
@@ -388,12 +391,11 @@ pub mod v1 {
             });
 
             let data = from_json_value::<EphemeralData>(typing_json.clone()).unwrap();
-            assert_matches!(&data, EphemeralData::Typing(typing));
+            assert_let!(EphemeralData::Typing(typing) = &data);
             assert_eq!(typing.room_id, room_id);
             assert_eq!(typing.content.user_ids, &[user_id.to_owned()]);
 
-            let serialized_data = to_json_value(data).unwrap();
-            assert_eq!(serialized_data, typing_json);
+            assert_to_canonical_json_eq!(data, typing_json);
 
             // Test m.receipt serde.
             let receipt_json = json!({
@@ -411,15 +413,14 @@ pub mod v1 {
             });
 
             let data = from_json_value::<EphemeralData>(receipt_json.clone()).unwrap();
-            assert_matches!(&data, EphemeralData::Receipt(receipt));
+            assert_let!(EphemeralData::Receipt(receipt) = &data);
             assert_eq!(receipt.room_id, room_id);
             let event_receipts = receipt.content.get(event_id).unwrap();
             let event_read_receipts = event_receipts.get(&ReceiptType::Read).unwrap();
             let event_user_read_receipt = event_read_receipts.get(user_id).unwrap();
             assert_eq!(event_user_read_receipt.ts, Some(MilliSecondsSinceUnixEpoch(uint!(453))));
 
-            let serialized_data = to_json_value(data).unwrap();
-            assert_eq!(serialized_data, receipt_json);
+            assert_to_canonical_json_eq!(data, receipt_json);
 
             // Test m.presence serde.
             let presence_json = json!({
@@ -435,12 +436,11 @@ pub mod v1 {
             });
 
             let data = from_json_value::<EphemeralData>(presence_json.clone()).unwrap();
-            assert_matches!(&data, EphemeralData::Presence(presence));
+            assert_let!(EphemeralData::Presence(presence) = &data);
             assert_eq!(presence.sender, user_id);
             assert_eq!(presence.content.currently_active, Some(false));
 
-            let serialized_data = to_json_value(data).unwrap();
-            assert_eq!(serialized_data, presence_json);
+            assert_to_canonical_json_eq!(data, presence_json);
 
             // Test custom serde.
             let custom_json = json!({
@@ -453,8 +453,7 @@ pub mod v1 {
 
             let data = from_json_value::<EphemeralData>(custom_json.clone()).unwrap();
 
-            let serialized_data = to_json_value(data).unwrap();
-            assert_eq!(serialized_data, custom_json);
+            assert_to_canonical_json_eq!(data, custom_json);
         }
 
         #[test]

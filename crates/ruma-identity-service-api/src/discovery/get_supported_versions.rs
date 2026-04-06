@@ -8,19 +8,19 @@
 //!
 //! Note: This endpoint does not contain an unstable variant for 1.0.
 //!
-//! [spec]: https://spec.matrix.org/latest/identity-service-api/#get_matrixidentityversions
+//! [spec]: https://spec.matrix.org/v1.18/identity-service-api/#get_matrixidentityversions
 
 use std::collections::BTreeMap;
 
 use ruma_common::{
-    api::{SupportedVersions, auth_scheme::NoAuthentication, request, response},
+    api::{SupportedVersions, auth_scheme::NoAccessToken, request, response},
     metadata,
 };
 
 metadata! {
     method: GET,
     rate_limited: false,
-    authentication: NoAuthentication,
+    authentication: NoAccessToken,
     path: "/_matrix/identity/versions",
 }
 

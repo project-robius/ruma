@@ -36,7 +36,7 @@ them as a user. Check out the documentation [on docs.rs][docs] (or on
 You can find a low level Matrix client in the [ruma-client repository](https://github.com/ruma/ruma-client).
 
 You can also find a small number of examples in our dedicated
-[examples repository](https://github.com/ruma/examples).
+[ruma-examples repository](https://github.com/ruma/ruma-examples).
 
 [matrix-rust-sdk]: https://github.com/matrix-org/matrix-rust-sdk#readme
 
@@ -53,7 +53,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Minimum Rust version
 
-Ruma currently requires Rust 1.88. In general, we will never require beta or
+Ruma currently requires Rust 1.89. In general, we will never require beta or
 nightly for crates.io releases of our crates, and we will try to avoid releasing
 crates that depend on features that were only just stabilized.
 

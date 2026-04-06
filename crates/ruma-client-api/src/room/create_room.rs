@@ -2,10 +2,21 @@
 //!
 //! Create a new room.
 
+use std::collections::BTreeMap;
+
+use js_int::Int;
+use ruma_common::{
+    OwnedUserId,
+    power_levels::NotificationPowerLevels,
+    serde::{JsonCastable, JsonObject},
+};
+use ruma_events::{TimelineEventType, room::power_levels::RoomPowerLevelsEventContent};
+use serde::Serialize;
+
 pub mod v3 {
     //! `/v3/` ([spec])
     //!
-    //! [spec]: https://spec.matrix.org/latest/client-server-api/#post_matrixclientv3createroom
+    //! [spec]: https://spec.matrix.org/v1.18/client-server-api/#post_matrixclientv3createroom
 
     use assign::assign;
     use ruma_common::{
@@ -17,13 +28,11 @@ pub mod v3 {
     };
     use ruma_events::{
         AnyInitialStateEvent,
-        room::{
-            create::{PreviousRoom, RoomCreateEventContent},
-            power_levels::RoomPowerLevelsEventContent,
-        },
+        room::create::{PreviousRoom, RoomCreateEventContent},
     };
     use serde::{Deserialize, Serialize};
 
+    use super::RoomPowerLevelsContentOverride;
     use crate::{PrivOwnedStr, membership::Invite3pid, room::Visibility};
 
     metadata! {
@@ -71,7 +80,7 @@ pub mod v3 {
 
         /// Power level content to override in the default power level event.
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub power_level_content_override: Option<Raw<RoomPowerLevelsEventContent>>,
+        pub power_level_content_override: Option<Raw<RoomPowerLevelsContentOverride>>,
 
         /// Convenience parameter for setting various default state events based on a preset.
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -148,8 +157,6 @@ pub mod v3 {
         pub predecessor: Option<PreviousRoom>,
 
         /// The room type.
-        ///
-        /// This is currently only used for spaces.
         #[serde(skip_serializing_if = "Option::is_none", rename = "type")]
         pub room_type: Option<RoomType>,
     }
@@ -210,5 +217,186 @@ pub mod v3 {
 
         #[doc(hidden)]
         _Custom(PrivOwnedStr),
+    }
+}
+
+/// The power level values that can be overridden when creating a room.
+///
+/// This has the same fields as [`RoomPowerLevelsEventContent`], but most of them are `Option`s.
+/// Contrary to [`RoomPowerLevelsEventContent`] which doesn't serialize fields that are set to their
+/// default value defined in the Matrix specification, this type serializes all fields that are
+/// `Some(_)`, regardless of their value.
+///
+/// This type is used to allow clients to avoid server behavior observed in the wild that sets
+/// custom default values for fields that are not set in the `create_room` request, while a client
+/// wants the server to use the default value defined in the Matrix specification for that field.
+#[derive(Clone, Debug, Serialize, Default)]
+#[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
+pub struct RoomPowerLevelsContentOverride {
+    /// The level required to ban a user.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ban: Option<Int>,
+
+    /// The level required to send specific event types.
+    ///
+    /// This is a mapping from event type to power level required.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub events: BTreeMap<TimelineEventType, Int>,
+
+    /// The default level required to send message events.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub events_default: Option<Int>,
+
+    /// The level required to invite a user.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invite: Option<Int>,
+
+    /// The level required to kick a user.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kick: Option<Int>,
+
+    /// The level required to redact an event.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub redact: Option<Int>,
+
+    /// The default level required to send state events.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_default: Option<Int>,
+
+    /// The power levels for specific users.
+    ///
+    /// This is a mapping from `user_id` to power level for that user.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub users: BTreeMap<OwnedUserId, Int>,
+
+    /// The default power level for every user in the room.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub users_default: Option<Int>,
+
+    /// The power level requirements for specific notification types.
+    ///
+    /// This is a mapping from `key` to power level for that notifications key.
+    #[serde(default, skip_serializing_if = "NotificationPowerLevels::is_default")]
+    pub notifications: NotificationPowerLevels,
+}
+
+impl RoomPowerLevelsContentOverride {
+    /// Creates a new, empty [`RoomPowerLevelsContentOverride`] instance.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl From<RoomPowerLevelsEventContent> for RoomPowerLevelsContentOverride {
+    fn from(value: RoomPowerLevelsEventContent) -> Self {
+        let RoomPowerLevelsEventContent {
+            ban,
+            events,
+            events_default,
+            invite,
+            kick,
+            redact,
+            state_default,
+            users,
+            users_default,
+            notifications,
+            ..
+        } = value;
+
+        Self {
+            ban: Some(ban),
+            events,
+            events_default: Some(events_default),
+            invite: Some(invite),
+            kick: Some(kick),
+            redact: Some(redact),
+            state_default: Some(state_default),
+            users,
+            users_default: Some(users_default),
+            notifications,
+        }
+    }
+}
+
+impl JsonCastable<RoomPowerLevelsEventContent> for RoomPowerLevelsContentOverride {}
+
+impl JsonCastable<RoomPowerLevelsContentOverride> for RoomPowerLevelsEventContent {}
+
+impl JsonCastable<JsonObject> for RoomPowerLevelsContentOverride {}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use assign::assign;
+    use js_int::int;
+    use maplit::btreemap;
+    use ruma_common::{
+        canonical_json::assert_to_canonical_json_eq, owned_user_id,
+        power_levels::NotificationPowerLevels,
+    };
+    use serde_json::json;
+
+    use super::RoomPowerLevelsContentOverride;
+
+    #[test]
+    fn serialization_of_power_levels_overridden_values_with_optional_fields_as_none() {
+        let power_levels = RoomPowerLevelsContentOverride {
+            ban: None,
+            events: BTreeMap::new(),
+            events_default: None,
+            invite: None,
+            kick: None,
+            redact: None,
+            state_default: None,
+            users: BTreeMap::new(),
+            users_default: None,
+            notifications: NotificationPowerLevels::default(),
+        };
+
+        assert_to_canonical_json_eq!(power_levels, json!({}));
+    }
+
+    #[test]
+    fn serialization_of_power_levels_overridden_values_with_all_fields() {
+        let user = owned_user_id!("@carl:example.com");
+        let power_levels_event = RoomPowerLevelsContentOverride {
+            ban: Some(int!(23)),
+            events: btreemap! {
+                "m.dummy".into() => int!(23)
+            },
+            events_default: Some(int!(23)),
+            invite: Some(int!(23)),
+            kick: Some(int!(23)),
+            redact: Some(int!(23)),
+            state_default: Some(int!(23)),
+            users: btreemap! {
+                user => int!(23)
+            },
+            users_default: Some(int!(23)),
+            notifications: assign!(NotificationPowerLevels::new(), { room: int!(23) }),
+        };
+
+        assert_to_canonical_json_eq!(
+            power_levels_event,
+            json!({
+                "ban": 23,
+                "events": {
+                    "m.dummy": 23
+                },
+                "events_default": 23,
+                "invite": 23,
+                "kick": 23,
+                "redact": 23,
+                "state_default": 23,
+                "users": {
+                    "@carl:example.com": 23
+                },
+                "users_default": 23,
+                "notifications": {
+                    "room": 23
+                },
+            })
+        );
     }
 }

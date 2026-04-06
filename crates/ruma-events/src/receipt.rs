@@ -1,6 +1,6 @@
 //! Types for the [`m.receipt`] event.
 //!
-//! [`m.receipt`]: https://spec.matrix.org/latest/client-server-api/#mreceipt
+//! [`m.receipt`]: https://spec.matrix.org/v1.18/client-server-api/#mreceipt
 
 mod receipt_thread_serde;
 
@@ -90,7 +90,7 @@ pub enum ReceiptType {
     /// If both `Read` and `ReadPrivate` are present, the one that references
     /// the most recent event is used to get the latest read receipt.
     ///
-    /// [public read receipt]: https://spec.matrix.org/latest/client-server-api/#receipts
+    /// [public read receipt]: https://spec.matrix.org/v1.18/client-server-api/#receipts
     #[ruma_enum(rename = "m.read")]
     Read,
 
@@ -105,7 +105,7 @@ pub enum ReceiptType {
     /// If both `Read` and `ReadPrivate` are present, the one that references
     /// the most recent event is used to get the latest read receipt.
     ///
-    /// [private read receipt]: https://spec.matrix.org/latest/client-server-api/#private-read-receipts
+    /// [private read receipt]: https://spec.matrix.org/v1.18/client-server-api/#private-read-receipts
     #[ruma_enum(rename = "m.read.private")]
     ReadPrivate,
 
@@ -149,7 +149,7 @@ impl Receipt {
 /// To check for values that are not available as a documented variant here, use its string
 /// representation, obtained through [`.as_str()`](Self::as_str()).
 ///
-/// [thread a receipt applies to]: https://spec.matrix.org/latest/client-server-api/#threaded-read-receipts
+/// [thread a receipt applies to]: https://spec.matrix.org/v1.18/client-server-api/#threaded-read-receipts
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ReceiptThread {
@@ -212,29 +212,31 @@ where
 #[cfg(test)]
 mod tests {
     use assert_matches2::assert_matches;
-    use ruma_common::{MilliSecondsSinceUnixEpoch, owned_event_id};
-    use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+    use ruma_common::{
+        MilliSecondsSinceUnixEpoch, canonical_json::assert_to_canonical_json_eq, owned_event_id,
+    };
+    use serde_json::{from_value as from_json_value, json};
 
     use super::{Receipt, ReceiptThread};
 
     #[test]
     fn serialize_receipt() {
         let mut receipt = Receipt::default();
-        assert_eq!(to_json_value(receipt.clone()).unwrap(), json!({}));
+        assert_to_canonical_json_eq!(receipt.clone(), json!({}));
 
         receipt.thread = ReceiptThread::Main;
-        assert_eq!(to_json_value(receipt.clone()).unwrap(), json!({ "thread_id": "main" }));
+        assert_to_canonical_json_eq!(receipt.clone(), json!({ "thread_id": "main" }));
 
         receipt.thread = ReceiptThread::Thread(owned_event_id!("$abcdef76543"));
-        assert_eq!(to_json_value(receipt).unwrap(), json!({ "thread_id": "$abcdef76543" }));
+        assert_to_canonical_json_eq!(receipt, json!({ "thread_id": "$abcdef76543" }));
 
         let mut receipt =
             Receipt::new(MilliSecondsSinceUnixEpoch(1_664_702_144_365_u64.try_into().unwrap()));
-        assert_eq!(to_json_value(receipt.clone()).unwrap(), json!({ "ts": 1_664_702_144_365_u64 }));
+        assert_to_canonical_json_eq!(receipt.clone(), json!({ "ts": 1_664_702_144_365_u64 }));
 
         receipt.thread = ReceiptThread::try_from(Some("io.ruma.unknown")).unwrap();
-        assert_eq!(
-            to_json_value(receipt).unwrap(),
+        assert_to_canonical_json_eq!(
+            receipt,
             json!({ "ts": 1_664_702_144_365_u64, "thread_id": "io.ruma.unknown" })
         );
     }

@@ -1,6 +1,6 @@
 //! `/v3/` ([spec])
 //!
-//! [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3sync
+//! [spec]: https://spec.matrix.org/v1.18/client-server-api/#get_matrixclientv3sync
 
 use std::{collections::BTreeMap, time::Duration};
 
@@ -257,7 +257,7 @@ pub struct JoinedRoom {
     /// If `unread_thread_notifications` was set to `true` in the [`RoomEventFilter`], these
     /// include only the unread notifications for the main timeline.
     ///
-    /// [unread notifications]: https://spec.matrix.org/latest/client-server-api/#receiving-notifications
+    /// [unread notifications]: https://spec.matrix.org/v1.18/client-server-api/#receiving-notifications
     /// [`RoomEventFilter`]: crate::filter::RoomEventFilter
     #[serde(skip_serializing_if = "UnreadNotificationsCount::is_empty")]
     pub unread_notifications: UnreadNotificationsCount,
@@ -268,7 +268,7 @@ pub struct JoinedRoom {
     ///
     /// Only set if `unread_thread_notifications` was set to `true` in the [`RoomEventFilter`].
     ///
-    /// [unread notifications]: https://spec.matrix.org/latest/client-server-api/#receiving-notifications
+    /// [unread notifications]: https://spec.matrix.org/v1.18/client-server-api/#receiving-notifications
     /// [`RoomEventFilter`]: crate::filter::RoomEventFilter
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub unread_thread_notifications: BTreeMap<OwnedEventId, UnreadNotificationsCount>,
@@ -684,7 +684,8 @@ impl ToDevice {
 #[cfg(test)]
 mod tests {
     use assign::assign;
-    use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+    use ruma_common::canonical_json::assert_to_canonical_json_eq;
+    use serde_json::{from_value as from_json_value, json};
 
     use super::Timeline;
 
@@ -692,13 +693,13 @@ mod tests {
     fn timeline_serde() {
         let timeline = assign!(Timeline::new(), { limited: true });
         let timeline_serialized = json!({ "events": [], "limited": true });
-        assert_eq!(to_json_value(timeline).unwrap(), timeline_serialized);
+        assert_to_canonical_json_eq!(timeline, timeline_serialized.clone());
 
         let timeline_deserialized = from_json_value::<Timeline>(timeline_serialized).unwrap();
         assert!(timeline_deserialized.limited);
 
         let timeline_default = Timeline::default();
-        assert_eq!(to_json_value(timeline_default).unwrap(), json!({ "events": [] }));
+        assert_to_canonical_json_eq!(timeline_default, json!({ "events": [] }));
 
         let timeline_default_deserialized =
             from_json_value::<Timeline>(json!({ "events": [] })).unwrap();

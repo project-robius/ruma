@@ -1,5 +1,96 @@
 # [unreleased]
 
+Breaking changes:
+
+- `PossiblyRedactedRoomMemberEventContent` is no longer a type alias for
+  `RoomMemberEventContent`. It would previously fail to deserialize if the
+  `third_party_invite` field was redacted as the `display_name` field was
+  required but it is removed during redaction.
+- The `canonical-json` feature was removed. The code that was behind it is no
+  longer gated behind a cargo feature.
+- The `Reply` struct variant of `message::Relation`, `encrypted::Relation` and
+  `RelationWithoutReplacement` is now a tuple variant containing a
+  non-exhaustive struct.
+- The `(Any)FullStateEventContent` enums were renamed to
+  `(Any)StateEventContentChange` to reflect better the purpose of those enums.
+  The method to access `AnyStateEventContentChange` on `Any(Sync)StateEvent` is
+  called `content_change()`.
+- The `content()` method on `Any(Sync)StateEvent` returns an
+  `AnyPossiblyRedactedStateEventContent`.
+- `RequestAction` doesn't implement `(Partial)Eq` and `(Partial)Ord` anymore and
+  its `Request` variant contains a non-exhaustive struct instead of a
+  `SecretName`.
+- `SecretEncryptedData` is now a non-constructible struct rather than an enum,
+  that should always be used as `Raw<SecretEncryptedData>`. Because there is no
+  indicator in the data for which algorithm was used for encrypting it, it won't
+  be possible to determine reliably which algorithm is matched during
+  deserialization when more algorithms are added. This type should be `.cast()`
+  from and to other types when the algorithm is known from external data. The
+  previous `AesHmacSha2EncryptedData` variant is now a separate struct.
+- Some fields of `EncryptedFile` are now grouped by version in a new
+  `EncryptedFileInfo` enum. This allows to support custom encryption algorithms
+  and to hide fields that should be set to a constant value to have a stricter
+  validation during construction and deserialization. Now that there are fewer
+  fields, this type can be constructed with `EncryptedFile::new()`.
+  - Similarly, the `hashes` field uses a stricter `EncryptedFileHashes` map type
+    to ensure that a decoded hash has the appropriate format for the algorithm
+    in the key.
+  - `EncryptedFileInit`, `JsonWebKey` and `JsonWebKeyInit` were removed.
+  - The same changes were applied to the unstable `EncryptedContent`.
+  
+
+Bug fixes:
+
+- Fix a double `msgtype` in a `m.location` event.
+
+Improvements:
+
+- Add `AnyPossiblyRedactedStateEventContent`, an enum containing all the
+  possibly redacted state event contents.
+  - Add `AnyStrippedStateEvent::content()` to access only the content of the
+    event.
+- Implement `From<(Redacted)*EventContent> for PossiblyRedacted*EventContent`
+  for all state events.
+- Implement `RedactContent for PossiblyRedacted*EventContent` for all state
+  events. 
+- Add support for the recently used emoji account data, according to MSC4356 /
+  Matrix 1.18.
+- Stabilize support for invite blocking, according to MSC4380 / Matrix 1.18.
+  Since the format of the account data changed, the previous event content
+  struct as well as its variants in `AnyGlobalAccountDataEvent(Content)` are now
+  prefixed with `Unstable`. The new `InvitePermissionConfigEventContent` struct
+  uses the new format with a `default_action` field instead of `block_all`.
+- Add support for to-device event for pushing secrets, according to MSC4385.
+- Add support for video/audio call intent according to MSC4075 as part of the 
+  `RtcNotificationEventContent` new `call_intent` field.
+- Add `AnySyncTimelineEvent::is_redacted()` helper.
+- Add `PossiblyRedactedSpace(Child/Parent)EventContent::is_valid()` to check the
+  validity of the event content according to the Matrix specification.
+- Add a convenience `event_type()` helper on event structs which allows to
+  access the event type from the inner `*EventContent` type without requiring to
+  have a trait in scope. It is added to the following structs:
+  - `EphemeralRoomEvent`
+  - `GlobalAccountDataEvent`
+  - `InitialStateEvent`
+  - `OriginalMessageLikeEvent`
+  - `OriginalStateEvent`
+  - `OriginalSyncMessageLikeEvent`
+  - `OriginalSyncStateEvent`
+  - `RedactedMessageLikeEvent`
+  - `RedactedStateEvent`
+  - `RedactedSyncMessageLikeEvent`
+  - `RedactedSyncStateEvent`
+  - `RoomAccountDataEvent`
+  - `StrippedStateEvent`
+  - `SyncEphemeralRoomEvent`
+  - `ToDeviceEvent`
+- Add support for reading `m.call.intent` inside rtc membership events, 
+  see `MembershipData::call_intent()`.
+- Stabilize the `is_animated` flag for image messages and sticker events,
+  according to MSC4230 / Matrix 1.18.
+- Add support for the `m.room.policy` state event, according to MSC4284 / Matrix
+  1.18.
+
 # 0.32.1
 
 Improvements:

@@ -14,7 +14,7 @@ use super::{MatrixToUri, MatrixUri, OwnedEventId, matrix_uri::UriAction, server_
 /// assert_eq!(<&RoomAliasId>::try_from("#ruma:example.com").unwrap(), "#ruma:example.com");
 /// ```
 ///
-/// [room alias ID]: https://spec.matrix.org/latest/appendices/#room-aliases
+/// [room alias ID]: https://spec.matrix.org/v1.18/appendices/#room-aliases
 #[repr(transparent)]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdDst)]
 #[ruma_id(validate = ruma_identifiers_validation::room_alias_id::validate)]
@@ -28,7 +28,7 @@ impl RoomAliasId {
 
     /// Returns the server name of the room alias ID.
     pub fn server_name(&self) -> &ServerName {
-        ServerName::from_borrowed(&self.as_str()[self.colon_idx() + 1..])
+        ServerName::from_borrowed_unchecked(&self.as_str()[self.colon_idx() + 1..])
     }
 
     /// Create a `matrix.to` URI for this room alias ID.

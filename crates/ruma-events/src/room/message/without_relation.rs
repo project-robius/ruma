@@ -7,7 +7,7 @@ use super::{
 };
 use crate::{
     Mentions,
-    relation::{InReplyTo, Replacement, Thread},
+    relation::{InReplyTo, Replacement, Reply, Thread},
 };
 
 /// Form of [`RoomMessageEventContent`] without relation.
@@ -22,7 +22,7 @@ pub struct RoomMessageEventContentWithoutRelation {
 
     /// The [mentions] of this event.
     ///
-    /// [mentions]: https://spec.matrix.org/latest/client-server-api/#user-and-room-mentions
+    /// [mentions]: https://spec.matrix.org/v1.18/client-server-api/#user-and-room-mentions
     #[serde(rename = "m.mentions", skip_serializing_if = "Option::is_none")]
     pub mentions: Option<Mentions>,
 
@@ -103,7 +103,7 @@ impl RoomMessageEventContentWithoutRelation {
     ///
     /// If `AddMentions::Yes` is used, the `sender` in the metadata is added as a user mention.
     ///
-    /// [rich reply]: https://spec.matrix.org/latest/client-server-api/#rich-replies
+    /// [rich reply]: https://spec.matrix.org/v1.18/client-server-api/#rich-replies
     #[track_caller]
     pub fn make_reply_to<'a>(
         mut self,
@@ -121,7 +121,7 @@ impl RoomMessageEventContentWithoutRelation {
         let relates_to = if let Some(event_id) = original_thread_id {
             Relation::Thread(Thread::plain(event_id.to_owned(), original_event_id.to_owned()))
         } else {
-            Relation::Reply { in_reply_to: InReplyTo { event_id: original_event_id.to_owned() } }
+            Relation::Reply(Reply::with_event_id(original_event_id.to_owned()))
         };
 
         if add_mentions == AddMentions::Yes {
@@ -147,7 +147,7 @@ impl RoomMessageEventContentWithoutRelation {
     ///
     /// If `AddMentions::Yes` is used, the `sender` in the metadata is added as a user mention.
     ///
-    /// [thread]: https://spec.matrix.org/latest/client-server-api/#threading
+    /// [thread]: https://spec.matrix.org/v1.18/client-server-api/#threading
     pub fn make_for_thread<'a>(
         self,
         metadata: impl Into<ReplyMetadata<'a>>,
@@ -194,7 +194,7 @@ impl RoomMessageEventContentWithoutRelation {
     ///
     /// Panics if `self` has a `formatted_body` with a format other than HTML.
     ///
-    /// [replacement]: https://spec.matrix.org/latest/client-server-api/#event-replacements
+    /// [replacement]: https://spec.matrix.org/v1.18/client-server-api/#event-replacements
     #[track_caller]
     pub fn make_replacement(
         mut self,
@@ -252,7 +252,7 @@ impl RoomMessageEventContentWithoutRelation {
     /// mentions by extending the previous `user_ids` with the new ones, and applies a logical OR to
     /// the values of `room`.
     ///
-    /// [mentions]: https://spec.matrix.org/latest/client-server-api/#user-and-room-mentions
+    /// [mentions]: https://spec.matrix.org/v1.18/client-server-api/#user-and-room-mentions
     pub fn add_mentions(mut self, mentions: Mentions) -> Self {
         self.mentions.get_or_insert_with(Mentions::new).add(mentions);
         self

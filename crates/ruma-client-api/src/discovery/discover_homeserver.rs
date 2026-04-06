@@ -1,6 +1,6 @@
 //! `GET /.well-known/matrix/client` ([spec])
 //!
-//! [spec]: https://spec.matrix.org/latest/client-server-api/#getwell-knownmatrixclient
+//! [spec]: https://spec.matrix.org/v1.18/client-server-api/#getwell-knownmatrixclient
 //!
 //! Get discovery information about the domain.
 
@@ -10,7 +10,7 @@ use std::borrow::Cow;
 #[cfg(feature = "unstable-msc4143")]
 use ruma_common::serde::JsonObject;
 use ruma_common::{
-    api::{auth_scheme::NoAuthentication, request, response},
+    api::{auth_scheme::NoAccessToken, request, response},
     metadata,
 };
 #[cfg(feature = "unstable-msc4143")]
@@ -22,7 +22,7 @@ use serde_json::Value as JsonValue;
 metadata! {
     method: GET,
     rate_limited: false,
-    authentication: NoAuthentication,
+    authentication: NoAccessToken,
     path: "/.well-known/matrix/client",
 }
 
@@ -233,9 +233,11 @@ pub struct CustomRtcFocusInfo {
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "unstable-msc4143")]
-    use assert_matches2::assert_matches;
+    use assert_matches2::assert_let;
     #[cfg(feature = "unstable-msc4143")]
-    use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+    use ruma_common::canonical_json::assert_to_canonical_json_eq;
+    #[cfg(feature = "unstable-msc4143")]
+    use serde_json::{from_value as from_json_value, json};
 
     #[cfg(feature = "unstable-msc4143")]
     use super::RtcFocusInfo;
@@ -253,7 +255,7 @@ mod tests {
         let focus: RtcFocusInfo = from_json_value(json).unwrap();
 
         // Then it should be recognized as a LiveKit focus with the correct service URL.
-        assert_matches!(focus, RtcFocusInfo::LiveKit(info));
+        assert_let!(RtcFocusInfo::LiveKit(info) = focus);
         assert_eq!(info.service_url, "https://livekit.example.com");
     }
 
@@ -263,12 +265,9 @@ mod tests {
         // Given a LiveKit RTC focus info.
         let focus = RtcFocusInfo::livekit("https://livekit.example.com".to_owned());
 
-        // When serializing it to JSON.
-        let json = to_json_value(&focus).unwrap();
-
-        // Then it should match the expected JSON structure.
-        assert_eq!(
-            json,
+        // When serializing to JSON, it should match the expected JSON structure.
+        assert_to_canonical_json_eq!(
+            focus,
             json!({
                 "type": "livekit",
                 "livekit_service_url": "https://livekit.example.com"
@@ -306,10 +305,7 @@ mod tests {
 
         assert!(!data.contains_key("type"));
 
-        // When serializing it back to JSON.
-        let serialized = to_json_value(&focus).unwrap();
-
-        // Then it should match the original JSON.
-        assert_eq!(serialized, json);
+        // When serializing it back to JSON, it should match the original JSON.
+        assert_to_canonical_json_eq!(focus, json);
     }
 }

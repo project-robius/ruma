@@ -4,7 +4,7 @@ use assert_matches2::assert_matches;
 use assign::assign;
 #[cfg(feature = "unstable-msc3381")]
 use ruma_common::event_id;
-use ruma_common::{owned_event_id, serde::Raw};
+use ruma_common::{canonical_json::assert_to_canonical_json_eq, owned_event_id, serde::Raw};
 #[cfg(feature = "unstable-msc3381")]
 use ruma_events::poll::{
     start::{PollAnswer, PollContentBlock, PollStartEventContent},
@@ -20,12 +20,10 @@ use ruma_events::{
     room::{encrypted, message::RelationWithoutReplacement},
 };
 use ruma_events::{
-    relation::{CustomRelation, InReplyTo, Replacement, Thread},
+    relation::{CustomRelation, Replacement, Reply, Thread},
     room::message::{MessageType, Relation, RoomMessageEventContent},
 };
-use serde_json::{
-    Value as JsonValue, from_value as from_json_value, json, to_value as to_json_value,
-};
+use serde_json::{Value as JsonValue, from_value as from_json_value, json};
 
 #[test]
 fn reply_deserialize() {
@@ -43,21 +41,21 @@ fn reply_deserialize() {
         from_json_value::<RoomMessageEventContent>(json),
         Ok(RoomMessageEventContent {
             msgtype: MessageType::Text(_),
-            relates_to: Some(Relation::Reply { in_reply_to: InReplyTo { event_id, .. }, .. }),
+            relates_to: Some(Relation::Reply(reply)),
             ..
         })
     );
-    assert_eq!(event_id, "$1598361704261elfgc:localhost");
+    assert_eq!(reply.in_reply_to.event_id, "$1598361704261elfgc:localhost");
 }
 
 #[test]
 fn reply_serialize() {
     let content = assign!(RoomMessageEventContent::text_plain("This is a reply"), {
-        relates_to: Some(Relation::Reply { in_reply_to: InReplyTo::new(owned_event_id!("$1598361704261elfgc")) }),
+        relates_to: Some(Relation::Reply(Reply::with_event_id(owned_event_id!("$1598361704261elfgc")) )),
     });
 
-    assert_eq!(
-        to_json_value(content).unwrap(),
+    assert_to_canonical_json_eq!(
+        content,
         json!({
             "msgtype": "m.text",
             "body": "This is a reply",
@@ -74,16 +72,16 @@ fn reply_serialize() {
 fn reply_serialization_roundtrip() {
     let body = "This is a reply";
     let mut content = RoomMessageEventContent::text_plain(body);
-    let reply = InReplyTo::new(owned_event_id!("$1598361704261elfgc"));
-    content.relates_to = Some(Relation::Reply { in_reply_to: reply.clone() });
+    let event_id = owned_event_id!("$1598361704261elfgc");
+    content.relates_to = Some(Relation::Reply(Reply::with_event_id(event_id.clone())));
 
     let json_content = Raw::new(&content).unwrap();
     let deser_content = json_content.deserialize().unwrap();
 
     assert_matches!(deser_content.msgtype, MessageType::Text(deser_msg));
     assert_eq!(deser_msg.body, body);
-    assert_matches!(content.relates_to.unwrap(), Relation::Reply { in_reply_to: deser_reply });
-    assert_eq!(deser_reply.event_id, reply.event_id);
+    assert_matches!(content.relates_to.unwrap(), Relation::Reply(reply));
+    assert_eq!(reply.in_reply_to.event_id, event_id);
 }
 
 #[test]
@@ -100,8 +98,8 @@ fn replacement_serialize() {
         }
     );
 
-    assert_eq!(
-        to_json_value(content).unwrap(),
+    assert_to_canonical_json_eq!(
+        content,
         json!({
             "msgtype": "m.text",
             "body": "<text msg>",
@@ -181,8 +179,8 @@ fn thread_plain_serialize() {
         }
     );
 
-    assert_eq!(
-        to_json_value(content).unwrap(),
+    assert_to_canonical_json_eq!(
+        content,
         json!({
             "msgtype": "m.text",
             "body": "<text msg>",
@@ -212,8 +210,8 @@ fn thread_reply_serialize() {
         }
     );
 
-    assert_eq!(
-        to_json_value(content).unwrap(),
+    assert_to_canonical_json_eq!(
+        content,
         json!({
             "msgtype": "m.text",
             "body": "<text msg>",
@@ -362,8 +360,8 @@ fn custom_serialize() {
     let mut content = RoomMessageEventContent::text_plain("<text msg>");
     content.relates_to = Some(Relation::_Custom(relation));
 
-    assert_eq!(
-        to_json_value(&content).unwrap(),
+    assert_to_canonical_json_eq!(
+        content,
         json!({
             "msgtype": "m.text",
             "body": "<text msg>",

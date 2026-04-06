@@ -5,7 +5,7 @@
 pub mod v3 {
     //! `/v3/` ([spec])
     //!
-    //! [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidmessages
+    //! [spec]: https://spec.matrix.org/v1.18/client-server-api/#get_matrixclientv3roomsroomidmessages
 
     use js_int::{UInt, uint};
     use ruma_common::{
@@ -190,7 +190,7 @@ pub mod v3 {
         #[test]
         fn serialize_some_room_event_filter() {
             let room_id = owned_room_id!("!roomid:example.org");
-            let rooms = vec![room_id.to_owned()];
+            let rooms = vec![room_id.clone()];
             let filter = RoomEventFilter {
                 lazy_load_options: LazyLoadOptions::Enabled { include_redundant_members: true },
                 rooms: Some(rooms),

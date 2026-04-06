@@ -5,11 +5,11 @@
 pub mod v3 {
     //! `/v3/` ([spec])
     //!
-    //! [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3directorylistroomroomid
+    //! [spec]: https://spec.matrix.org/v1.18/client-server-api/#get_matrixclientv3directorylistroomroomid
 
     use ruma_common::{
         OwnedRoomId,
-        api::{auth_scheme::NoAuthentication, request, response},
+        api::{auth_scheme::NoAccessToken, request, response},
         metadata,
     };
 
@@ -18,7 +18,7 @@ pub mod v3 {
     metadata! {
         method: GET,
         rate_limited: false,
-        authentication: NoAuthentication,
+        authentication: NoAccessToken,
         history: {
             1.0 => "/_matrix/client/r0/directory/list/room/{room_id}",
             1.1 => "/_matrix/client/v3/directory/list/room/{room_id}",

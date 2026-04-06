@@ -3,21 +3,20 @@
 pub mod v3 {
     //! `/v3/` ([spec])
     //!
-    //! [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3loginssoredirect
+    //! [spec]: https://spec.matrix.org/v1.18/client-server-api/#get_matrixclientv3loginssoredirect
 
     use http::header::{LOCATION, SET_COOKIE};
     use ruma_common::{
-        api::{auth_scheme::NoAuthentication, request, response},
+        api::{auth_scheme::NoAccessToken, request, response},
         metadata,
     };
 
-    #[cfg(feature = "unstable-msc3824")]
-    use crate::session::SsoRedirectOidcAction;
+    use crate::session::SsoRedirectAction;
 
     metadata! {
         method: GET,
         rate_limited: false,
-        authentication: NoAuthentication,
+        authentication: NoAccessToken,
         history: {
             1.0 => "/_matrix/client/r0/login/sso/redirect",
             1.1 => "/_matrix/client/v3/login/sso/redirect",
@@ -33,15 +32,10 @@ pub mod v3 {
         #[serde(rename = "redirectUrl")]
         pub redirect_url: String,
 
-        /// The purpose for using the SSO redirect URL for OIDC-aware compatibility.
-        ///
-        /// This field uses the unstable prefix defined in [MSC3824].
-        ///
-        /// [MSC3824]: https://github.com/matrix-org/matrix-spec-proposals/pull/3824
-        #[cfg(feature = "unstable-msc3824")]
+        /// The action that the user wishes to take at the SSO redirect.
         #[ruma_api(query)]
-        #[serde(skip_serializing_if = "Option::is_none", rename = "org.matrix.msc3824.action")]
-        pub action: Option<SsoRedirectOidcAction>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub action: Option<SsoRedirectAction>,
     }
 
     /// Response type for the `sso_login` endpoint.
@@ -59,11 +53,7 @@ pub mod v3 {
     impl Request {
         /// Creates a new `Request` with the given redirect URL.
         pub fn new(redirect_url: String) -> Self {
-            Self {
-                redirect_url,
-                #[cfg(feature = "unstable-msc3824")]
-                action: None,
-            }
+            Self { redirect_url, action: None }
         }
     }
 
