@@ -518,11 +518,19 @@ pub mod response {
     #[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
     pub struct Room {
         /// The name as calculated by the server.
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(
+            default,
+            deserialize_with = "ignore_invalid",
+            skip_serializing_if = "Option::is_none"
+        )]
         pub name: Option<String>,
 
         /// The avatar.
-        #[serde(default, skip_serializing_if = "JsOption::is_undefined")]
+        #[serde(
+            default,
+            deserialize_with = "ignore_invalid_js",
+            skip_serializing_if = "JsOption::is_undefined"
+        )]
         pub avatar: JsOption<OwnedMxcUri>,
 
         /// Whether it is an initial response.
@@ -603,11 +611,21 @@ pub mod response {
         pub user_id: OwnedUserId,
 
         /// The name.
-        #[serde(rename = "displayname", skip_serializing_if = "Option::is_none")]
+        #[serde(
+            rename = "displayname",
+            default,
+            deserialize_with = "ignore_invalid",
+            skip_serializing_if = "Option::is_none"
+        )]
         pub name: Option<String>,
 
         /// The avatar.
-        #[serde(rename = "avatar_url", skip_serializing_if = "Option::is_none")]
+        #[serde(
+            rename = "avatar_url",
+            default,
+            deserialize_with = "ignore_invalid",
+            skip_serializing_if = "Option::is_none"
+        )]
         pub avatar: Option<OwnedMxcUri>,
     }
 
@@ -802,6 +820,29 @@ pub mod response {
             self.subscribed.is_empty() && self.unsubscribed.is_empty() && self.prev_batch.is_none()
         }
     }
+
+    /// Deserialize into `Option<T>`, ignoring a value of the wrong type so a
+    /// single malformed field doesn't fail the whole sync response.
+    fn ignore_invalid<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+        T: serde::de::DeserializeOwned,
+    {
+        Ok(Option::<Raw<T>>::deserialize(deserializer)?.and_then(|raw| raw.deserialize().ok()))
+    }
+
+    /// Same as [`ignore_invalid`] but for a [`JsOption`] field.
+    fn ignore_invalid_js<'de, D, T>(deserializer: D) -> Result<JsOption<T>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+        T: serde::de::DeserializeOwned,
+    {
+        Ok(match JsOption::<Raw<T>>::deserialize(deserializer)? {
+            JsOption::Some(raw) => JsOption::from_implicit_option(raw.deserialize().ok()),
+            JsOption::Null => JsOption::Null,
+            JsOption::Undefined => JsOption::Undefined,
+        })
+    }
 }
 
 #[cfg(test)]
@@ -830,5 +871,37 @@ mod tests {
             serde_json::from_str::<ExtensionRoomConfig>(r#""!foo:bar.baz""#).unwrap(),
             ExtensionRoomConfig::Room(owned_room_id!("!foo:bar.baz"))
         );
+    }
+
+    #[test]
+    fn deserialize_room_ignores_invalid_string_fields() {
+        use super::response::Room;
+
+        let room: Room = serde_json::from_str(
+            r#"{
+                "name": {},
+                "avatar": {},
+                "heroes": [{ "user_id": "@alice:localhost", "displayname": {}, "avatar_url": {} }]
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(room.name, None);
+        assert!(room.avatar.is_undefined());
+        let hero = &room.heroes.unwrap()[0];
+        assert_eq!(hero.name, None);
+        assert_eq!(hero.avatar, None);
+
+        // Valid values are still kept.
+        let room: Room = serde_json::from_str(
+            r#"{ "name": "Room", "avatar": "mxc://localhost/a", "heroes": [{ "user_id": "@alice:localhost", "displayname": "Alice", "avatar_url": "mxc://localhost/b" }] }"#,
+        )
+        .unwrap();
+
+        assert_eq!(room.name.as_deref(), Some("Room"));
+        assert_eq!(room.avatar.into_option().unwrap().as_str(), "mxc://localhost/a");
+        let hero = &room.heroes.unwrap()[0];
+        assert_eq!(hero.name.as_deref(), Some("Alice"));
+        assert_eq!(hero.avatar.as_ref().unwrap().as_str(), "mxc://localhost/b");
     }
 }
