@@ -3,8 +3,11 @@
 //! (De)serializable types for the [Matrix Application Service API][appservice-api].
 //! These types can be shared by application service and server code.
 //!
-//! [appservice-api]: https://spec.matrix.org/v1.18/application-service-api/
+//! [appservice-api]: https://spec.matrix.org/v1.19/application-service-api/
 
+// This crate is not useful without either of those features, so export nothing if they are not
+// enabled to avoid errors when running checks wrongly without enabling any of them.
+#![cfg(any(feature = "client", feature = "server"))]
 #![warn(missing_docs)]
 
 use serde::{Deserialize, Serialize};
@@ -16,7 +19,7 @@ pub mod thirdparty;
 
 /// A namespace defined by an application service.
 ///
-/// Used for [appservice registration](https://spec.matrix.org/v1.18/application-service-api/#registration).
+/// Used for [appservice registration](https://spec.matrix.org/v1.19/application-service-api/#registration).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 pub struct Namespace {
@@ -36,7 +39,7 @@ impl Namespace {
 
 /// Namespaces defined by an application service.
 ///
-/// Used for [appservice registration](https://spec.matrix.org/v1.18/application-service-api/#registration).
+/// Used for [appservice registration](https://spec.matrix.org/v1.19/application-service-api/#registration).
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 pub struct Namespaces {
@@ -66,7 +69,7 @@ impl Namespaces {
 /// To create an instance of this type, first create a `RegistrationInit` and convert it via
 /// `Registration::from` / `.into()`.
 ///
-/// Used for [appservice registration](https://spec.matrix.org/v1.18/application-service-api/#registration).
+/// Used for [appservice registration](https://spec.matrix.org/v1.19/application-service-api/#registration).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 pub struct Registration {
@@ -113,7 +116,7 @@ pub struct Registration {
 /// This struct will not be updated even if additional fields are added to `Registration` in a new
 /// (non-breaking) release of the Matrix specification.
 ///
-/// Used for [appservice registration](https://spec.matrix.org/v1.18/application-service-api/#registration).
+/// Used for [appservice registration](https://spec.matrix.org/v1.19/application-service-api/#registration).
 #[derive(Debug)]
 #[allow(clippy::exhaustive_structs)]
 pub struct RegistrationInit {

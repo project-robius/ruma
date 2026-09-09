@@ -5,6 +5,8 @@ use std::collections::{BTreeMap, btree_map};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
+#[cfg(feature = "unstable-msc4262")]
+use super::UserProfileChanges;
 use super::{ProfileFieldName, ProfileFieldValue, static_profile_field::StaticProfileField};
 
 /// All the profile information for a user.
@@ -40,6 +42,18 @@ impl UserProfile {
     /// Sets a field to the given value.
     pub fn set(&mut self, field: String, value: JsonValue) {
         self.0.insert(field, value);
+    }
+
+    /// Applies the changes from a [`UserProfileChanges`] to this profile.
+    #[cfg(feature = "unstable-msc4262")]
+    pub fn apply(&mut self, changes: UserProfileChanges) {
+        for (field, value) in changes.updated {
+            self.0.insert(field.to_string(), value);
+        }
+
+        for field in changes.removed {
+            self.0.remove(field.as_str());
+        }
     }
 }
 
@@ -85,5 +99,62 @@ impl IntoIterator for UserProfile {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+#[cfg(test)]
+#[cfg(all(feature = "unstable-msc4262", feature = "unstable-msc4426"))]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use serde_json::json;
+
+    use crate::{
+        owned_mxc_uri,
+        profile::{
+            AvatarUrl, Call, CallProfileField, DisplayName, ProfileFieldName, ProfileFieldValue,
+            Status, StatusProfileField, UserProfile, UserProfileChanges,
+        },
+    };
+
+    #[test]
+    fn apply_profile_update() {
+        let mut profile = UserProfile::from_iter([
+            ProfileFieldValue::DisplayName("Alice".to_owned()),
+            ProfileFieldValue::AvatarUrl(owned_mxc_uri!("mxc://localhost/abcdef")),
+            ProfileFieldValue::Status(StatusProfileField {
+                text: "Working".to_owned(),
+                emoji: "🧑‍💻".to_owned(),
+            }),
+        ]);
+
+        let mut profile_update = UserProfileChanges::new();
+        profile_update.removed = vec![ProfileFieldName::AvatarUrl];
+        profile_update.updated = BTreeMap::from([
+            (ProfileFieldName::Status, json!({ "text": "Holiday", "emoji": "🏖️"})),
+            (ProfileFieldName::Call, json!({})),
+        ]);
+
+        profile.apply(profile_update);
+
+        assert_eq!(
+            profile.get_static::<DisplayName>().unwrap().unwrap(),
+            "Alice".to_owned(),
+            "The display name should be preserved."
+        );
+        assert!(
+            profile.get_static::<AvatarUrl>().unwrap().is_none(),
+            "The avatar should be removed."
+        );
+        assert_eq!(
+            profile.get_static::<Status>().unwrap().unwrap(),
+            StatusProfileField { text: "Holiday".to_owned(), emoji: "🏖️".to_owned() },
+            "The status should be updated."
+        );
+        assert_eq!(
+            profile.get_static::<Call>().unwrap().unwrap(),
+            CallProfileField { call_joined_ts: None },
+            "The call indicator should be set."
+        );
     }
 }

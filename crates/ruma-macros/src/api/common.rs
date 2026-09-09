@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote};
+use quote::{ToTokens, format_ident, quote};
 use syn::parse_quote;
 
 use crate::util::{
@@ -245,6 +245,44 @@ impl Body {
         Ok(())
     }
 
+    pub(super) fn type_name(
+        &self,
+        kind: MacroKind,
+        ruma_common: &RumaCommon,
+        meta_ident: &syn::Ident,
+    ) -> TokenStream {
+        match &self.fields {
+            BodyFields::Empty => {
+                match kind {
+                    MacroKind::Request => {
+                        let http = ruma_common.reexported(RumaCommonReexport::Http);
+                        quote! {
+                            #ruma_common::api::EmptyBody<{
+                                // Need this static to work around
+                                // 'destructor of http::Method cannot be evaluated at compile-time'.
+                                static M: #http::Method = <#meta_ident as #ruma_common::api::Metadata>::METHOD;
+                                // Need to use match instead of == since the latter goes through the
+                                // PartialEq trait and that can't be used in const contexts yet.
+                                match M {
+                                    #http::Method::GET => true,
+                                    _ => false
+                                }
+                            }>
+                        }
+                    }
+                    MacroKind::Response => {
+                        // A response always returns a JSON body.
+                        quote! { #ruma_common::api::EmptyBody<false> }
+                    }
+                }
+            }
+            BodyFields::JsonFields(_) | BodyFields::JsonAll(_) => {
+                kind.as_struct_ident(StructSuffix::Body).into_token_stream()
+            }
+            BodyFields::Raw(_) => quote! { #ruma_common::api::BytesBody },
+        }
+    }
+
     /// The content type of the body, if it can be determined.
     ///
     /// Returns a `const` from `ruma_common::http_headers`.
@@ -309,12 +347,18 @@ impl Body {
             extra_attrs.extend(quote! { #[serde(transparent)] });
         }
 
+        let outgoing_body_feature = match kind {
+            MacroKind::Request => "client",
+            MacroKind::Response => "server",
+        };
+
         Some(quote! {
             /// Data in the request body.
-            #[cfg(any(feature = "client", feature = "server"))]
+            #[doc(hidden)]
             #[derive(Debug, #ruma_macros::_FakeDeriveRumaApi, #ruma_macros::_FakeDeriveSerde)]
+            #[cfg_attr(feature = #outgoing_body_feature, derive(#ruma_macros::OutgoingBodyJson))]
             #extra_attrs
-            struct #ident { #( #fields ),* }
+            pub struct #ident { #( #fields ),* }
         })
     }
 
@@ -380,36 +424,22 @@ impl Body {
         }
     }
 
-    /// Generate code to serialize the body.
-    pub(super) fn expand_serialize(
-        &self,
-        kind: MacroKind,
-        ruma_common: &RumaCommon,
-    ) -> TokenStream {
+    pub(super) fn body_expr(&self, kind: MacroKind, ruma_common: &RumaCommon) -> TokenStream {
         match &self.fields {
-            BodyFields::Empty => match kind {
-                MacroKind::Request => {
-                    quote! { <Self as #ruma_common::api::Metadata>::empty_request_body::<T>() }
+            BodyFields::Empty => quote! { #ruma_common::api::EmptyBody },
+            BodyFields::JsonFields(_) | BodyFields::JsonAll(_) => {
+                let serde_struct = kind.as_struct_ident(StructSuffix::Body);
+                let fields = self.expand_fields();
+                quote! {
+                    #serde_struct { #fields }
                 }
-                // A response always returns a JSON body.
-                MacroKind::Response => quote! { #ruma_common::serde::slice_to_buf(b"{}") },
-            },
-            BodyFields::JsonFields(_) => self.expand_serialize_json(kind, ruma_common),
-            BodyFields::JsonAll(_) => self.expand_serialize_json(kind, ruma_common),
-            BodyFields::Raw(field) => {
-                let ident = field.ident();
-                quote! { #ruma_common::serde::slice_to_buf(&#ident) }
             }
-        }
-    }
-
-    /// Generate code to serialize the JSON body with the given fields.
-    fn expand_serialize_json(&self, kind: MacroKind, ruma_common: &RumaCommon) -> TokenStream {
-        let fields = self.expand_fields();
-        let serde_struct = kind.as_struct_ident(StructSuffix::Body);
-
-        quote! {
-            #ruma_common::serde::json_to_buf(&#serde_struct { #fields })?
+            BodyFields::Raw(field) => {
+                let field_ident = field.ident.to_token_stream();
+                quote! {
+                    #ruma_common::api::BytesBody(#field_ident)
+                }
+            }
         }
     }
 }

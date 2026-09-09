@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+Breaking changes:
+
+- `OutgoingRequest::try_into_http_request` has been moved to a new `OutgoingRequestExt` trait
+  that is automatically implemented for any `T: OutgoingRequest`
+  - Implementors of `OutgoingRequest` now instead have to provide the new `type Body`
+    and `fn try_into_http_request_inner`
+- `OutgoingResponse::try_into_http_response` has been moved to a new `OutgoingResponseExt` trait
+  that is automatically implemented for any `T: OutgoingResponse`
+  - Implementors of `OutgoingResponse` now instead have to provide the new `type Body`
+    and `fn try_into_http_response_inner`
+
+Bug fixes:
+
+- Add `StatusProfileField::new()` and `CallProfileField::new()` constructors for MSC4426
+
 Improvements:
 
 - Add `From` conversions between `MatrixToUri` and `MatrixUri`.
@@ -9,8 +24,19 @@ Improvements:
 - Add `M_CONCURRENT_WRITE` error code, used by [MSC4438].
 - Add `canonical_json::RedactingSerializer` to serialize a `CanonicalJsonObject`
   while redacting it on the fly.
+- Add `MatrixVersion::V1_19`.
+- Add the `zeroize(mut self)` method on identifiers, which will call the
+  `zeroize` crate.
+- `UserProfileUpdate` has been replaced with `UserProfileChanges` and a new `UserProfileUpdate`
+  enum has been introduced to either wrap the changes or signal that the stored profile should be
+  dropped.
+- `UserProfile::merge` has been renamed to `UserProfile::apply`.
+- Add experimental support for [MSC4495] (Selective Presence).
+- Add experimental support for [MSC4494] (Membership-based invite blocking).
 
 [MSC4438]: https://github.com/matrix-org/matrix-spec-proposals/pull/4438
+[MSC4495]: https://github.com/matrix-org/matrix-spec-proposals/pull/4495
+[MSC4494]: https://github.com/matrix-org/matrix-spec-proposals/pull/4494
 
 ## 0.19.0
 
