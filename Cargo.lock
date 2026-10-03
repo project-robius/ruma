@@ -89,10 +89,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9dbc3a507a82b17ba0d98f6ce8fd6954ea0c8152e98009d36a40d8dcc8ce078a"
 
 [[package]]
-name = "assert_matches2"
-version = "0.1.2"
+name = "assert_matches"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15832d94c458da98cac0ffa6eca52cc19c2a3c6c951058500a5ae8f01f0fdf56"
+checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
 
 [[package]]
 name = "assign"
@@ -1871,7 +1871,6 @@ dependencies = [
 name = "ruma-appservice-api"
 version = "0.17.0"
 dependencies = [
- "assert_matches2",
  "http",
  "js_int",
  "ruma-common",
@@ -1879,6 +1878,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "strass",
 ]
 
 [[package]]
@@ -1886,7 +1886,7 @@ name = "ruma-client-api"
 version = "0.25.0"
 dependencies = [
  "as_variant",
- "assert_matches2",
+ "assert_matches",
  "assign",
  "bytes",
  "http",
@@ -1898,6 +1898,7 @@ dependencies = [
  "serde",
  "serde_html_form",
  "serde_json",
+ "strass",
  "thiserror",
  "url",
  "web-time",
@@ -1908,7 +1909,7 @@ name = "ruma-common"
 version = "0.20.0"
 dependencies = [
  "as_variant",
- "assert_matches2",
+ "assert_matches",
  "assign",
  "base64 0.23.1",
  "bytes",
@@ -1931,6 +1932,7 @@ dependencies = [
  "serde_json",
  "smallvec",
  "smol-macros",
+ "strass",
  "thiserror",
  "time",
  "tracing",
@@ -1948,7 +1950,7 @@ name = "ruma-events"
 version = "0.35.0"
 dependencies = [
  "as_variant",
- "assert_matches2",
+ "assert_matches",
  "assign",
  "criterion",
  "indexmap",
@@ -1962,6 +1964,7 @@ dependencies = [
  "ruma-macros",
  "serde",
  "serde_json",
+ "strass",
  "thiserror",
  "tracing",
  "trybuild",
@@ -1975,7 +1978,7 @@ dependencies = [
 name = "ruma-federation-api"
 version = "0.16.0"
 dependencies = [
- "assert_matches2",
+ "assert_matches",
  "bytes",
  "http",
  "http-auth",
@@ -1989,6 +1992,7 @@ dependencies = [
  "ruma-signatures",
  "serde",
  "serde_json",
+ "strass",
  "thiserror",
  "tracing",
 ]
@@ -1998,9 +2002,10 @@ name = "ruma-html"
 version = "0.9.0"
 dependencies = [
  "as_variant",
- "assert_matches2",
+ "assert_matches",
  "html5ever",
  "ruma-common",
+ "strass",
  "tracing",
  "wildmatch",
 ]
@@ -2054,7 +2059,7 @@ dependencies = [
 name = "ruma-signatures"
 version = "0.22.0"
 dependencies = [
- "assert_matches2",
+ "assert_matches",
  "base64 0.23.1",
  "ed25519-dalek",
  "insta",
@@ -2065,6 +2070,7 @@ dependencies = [
  "ruma-events",
  "serde_json",
  "sha2",
+ "strass",
  "thiserror",
 ]
 
@@ -2072,7 +2078,7 @@ dependencies = [
 name = "ruma-state-res"
 version = "0.18.0"
 dependencies = [
- "assert_matches2",
+ "assert_matches",
  "criterion",
  "insta",
  "js_int",
@@ -2082,6 +2088,7 @@ dependencies = [
  "serde",
  "serde_json",
  "similar",
+ "strass",
  "test-log",
  "thiserror",
  "tracing",
@@ -2117,9 +2124,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.43"
+version = "0.23.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0283386ce02abc0151e1761d08802dfe86c173b0b494af5cbc086574e453da06"
+checksum = "0d41d731c7d2f962d1ccc364cec258de3c0e93b38c2fb3ba97ac74513048d634"
 dependencies = [
  "aws-lc-rs",
  "once_cell",
@@ -2453,6 +2460,12 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "strass"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fdb8c79b3947f2fa62d8bffc17c52beb6ffe40ac5a31b5716825774f8f667708"
 
 [[package]]
 name = "string_cache"
@@ -2890,10 +2903,6 @@ name = "triomphe"
 version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b40688ea6389c8171614b25491f71d4a27946e0c7ce2da1c6de27e25abf1a0ae"
-dependencies = [
- "serde",
- "stable_deref_trait",
-]
 
 [[package]]
 name = "try-lock"

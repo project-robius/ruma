@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+Bug fixes:
+
+- In the `session::login::v3` module, the `identity_server` field is no longer
+  serialized when it is `Option::None`.
+
+Improvements:
+
+- Updated support for unstable MSC4388 with new `txn_id` field on update requests.
+- Add unstable support for [MSC4540] "`m.admin` capability".
+
+[MSC4540]: https://github.com/matrix-org/matrix-spec-proposals/pull/4540
+
 ## 0.25.0
 
 Breaking changes:

@@ -30,8 +30,8 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 [dev-dependencies]
-assert_matches2 = { workspace = true }
 serde_yaml = "0.9.14"
+strass = { workspace = true }
 
 [lints]
 workspace = true
