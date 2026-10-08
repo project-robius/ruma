@@ -33,6 +33,7 @@ pub mod encryption;
 pub mod guest_access;
 pub mod history_visibility;
 pub mod image_pack;
+mod is_animated_serde;
 pub mod join_rules;
 #[cfg(feature = "unstable-msc4334")]
 pub mod language;
@@ -142,7 +143,7 @@ pub struct ImageInfo {
     ///
     /// Receiving clients MAY use this flag to optimize whether to download the original image
     /// rather than a thumbnail if it is animated, but they SHOULD NOT trust this flag.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(flatten, with = "is_animated_serde", skip_serializing_if = "Option::is_none")]
     pub is_animated: Option<bool>,
 }
 

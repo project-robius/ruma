@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use assert_matches::assert_matches;
+use assign::assign;
 use ruma_common::{
     OwnedDeviceId,
     canonical_json::assert_to_canonical_json_eq,
@@ -14,7 +15,8 @@ use ruma_events::{
     Mentions,
     key::verification::VerificationMethod,
     room::{
-        EncryptedFile, EncryptedFileHash, EncryptedFileInfo, MediaSource, V2EncryptedFileInfo,
+        EncryptedFile, EncryptedFileHash, EncryptedFileInfo, ImageInfo, MediaSource,
+        V2EncryptedFileInfo,
         message::{
             AddMentions, AudioMessageEventContent, EmoteMessageEventContent,
             FileMessageEventContent, FormattedBody, ForwardThread, ImageMessageEventContent,
@@ -786,6 +788,118 @@ fn image_msgtype_deserialization() {
     assert_eq!(content.body, "Upload: my_image.jpg");
     assert_variant_eq!(content.source, MediaSource::Plain("mxc://notareal.hs/file"));
     assert!(content.caption().is_none());
+}
+
+#[test]
+fn image_msgtype_is_animated_serialization() {
+    let content = ImageMessageEventContent::plain(
+        "Upload: my_image.gif".to_owned(),
+        owned_mxc_uri!("mxc://notareal.hs/file"),
+    );
+    let animated_info = assign!(ImageInfo::new(), { is_animated: Some(true) });
+
+    assert_to_canonical_json_eq!(
+        RoomMessageEventContent::new(MessageType::Image(
+            content.clone().info(Box::new(animated_info))
+        )),
+        json!({
+            "body": "Upload: my_image.gif",
+            "url": "mxc://notareal.hs/file",
+            "info": {
+                "is_animated": true,
+            },
+            "msgtype": "m.image",
+        })
+    );
+
+    assert_to_canonical_json_eq!(
+        RoomMessageEventContent::new(MessageType::Image(content.info(Box::new(ImageInfo::new())))),
+        json!({
+            "body": "Upload: my_image.gif",
+            "url": "mxc://notareal.hs/file",
+            "info": {},
+            "msgtype": "m.image",
+        })
+    );
+}
+
+#[test]
+fn image_msgtype_stable_is_animated_deserialization() {
+    let json_data = json!({
+        "body": "Upload: my_image.gif",
+        "url": "mxc://notareal.hs/file",
+        "info": {
+            "is_animated": true,
+        },
+        "msgtype": "m.image",
+    });
+
+    let event_content = from_json_value::<RoomMessageEventContent>(json_data).unwrap();
+    assert_let!(MessageType::Image(content) = event_content.msgtype);
+    assert_eq!(content.info.unwrap().is_animated, Some(true));
+}
+
+#[test]
+fn image_msgtype_unstable_is_animated_deserialization() {
+    let json_data = json!({
+        "body": "Upload: my_image.gif",
+        "url": "mxc://notareal.hs/file",
+        "info": {
+            "org.matrix.msc4230.is_animated": true,
+        },
+        "msgtype": "m.image",
+    });
+
+    let event_content = from_json_value::<RoomMessageEventContent>(json_data).unwrap();
+    assert_let!(MessageType::Image(content) = event_content.msgtype);
+    assert_eq!(content.info.unwrap().is_animated, Some(true));
+}
+
+#[test]
+fn image_msgtype_stable_and_unstable_is_animated_deserialization() {
+    let json_data = json!({
+        "body": "Upload: my_image.gif",
+        "url": "mxc://notareal.hs/file",
+        "info": {
+            "is_animated": false,
+            "org.matrix.msc4230.is_animated": true,
+        },
+        "msgtype": "m.image",
+    });
+
+    let event_content = from_json_value::<RoomMessageEventContent>(json_data).unwrap();
+    assert_let!(MessageType::Image(content) = event_content.msgtype);
+    assert_eq!(content.info.unwrap().is_animated, Some(false));
+}
+
+#[test]
+fn image_msgtype_invalid_unstable_is_animated_deserialization() {
+    let json_data = json!({
+        "body": "Upload: my_image.gif",
+        "url": "mxc://notareal.hs/file",
+        "info": {
+            "org.matrix.msc4230.is_animated": "yes",
+        },
+        "msgtype": "m.image",
+    });
+
+    let event_content = from_json_value::<RoomMessageEventContent>(json_data).unwrap();
+    assert_let!(MessageType::Image(content) = event_content.msgtype);
+    assert_eq!(content.info.unwrap().is_animated, None);
+}
+
+#[test]
+fn image_msgtype_without_is_animated_deserialization() {
+    let json_data = json!({
+        "body": "Upload: my_image.gif",
+        "url": "mxc://notareal.hs/file",
+        "info": {},
+        "msgtype": "m.image",
+    });
+
+    let event_content = from_json_value::<RoomMessageEventContent>(json_data).unwrap();
+    assert_let!(MessageType::Image(content) = event_content.msgtype);
+    assert_eq!(content.info.unwrap().is_animated, None);
 }
 
 #[cfg(not(feature = "unstable-msc3488"))]

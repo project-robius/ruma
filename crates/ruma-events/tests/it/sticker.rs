@@ -298,3 +298,18 @@ fn event_deserialization() {
     assert_eq!(thumbnail_info.mimetype.as_deref(), Some("image/png"));
     assert_eq!(thumbnail_info.size, Some(uint!(82595)));
 }
+
+#[test]
+fn stable_and_unstable_is_animated_deserialization() {
+    let json_data = json!({
+        "body": "Hello",
+        "url": "mxc://notareal.hs/file",
+        "info": {
+            "is_animated": false,
+            "org.matrix.msc4230.is_animated": true,
+        },
+    });
+
+    let content = from_json_value::<StickerEventContent>(json_data).unwrap();
+    assert_eq!(content.info.is_animated, Some(false));
+}

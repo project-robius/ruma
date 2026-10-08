@@ -17,6 +17,8 @@ Bug fixes:
 Improvements:
 
 - Add unstable support for [MSC4546] (Circles) behind the `unstable-msc4546` feature flag.
+- `ImageInfo` also reads the unstable `org.matrix.msc4230.is_animated` field when the stable
+  `is_animated` field is missing, since some clients still only send the unstable one.
 
 [MSC4546]: https://github.com/matrix-org/matrix-spec-proposals/pull/4546
 
